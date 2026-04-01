@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toll Plaza Vehicle Detection System</title>
+    <!-- Bootstrap 5 CSS + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Tailwind CSS (for utilities, can be used alongside Bootstrap) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for heatmap -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom overrides for better integration */
+        .card {
+            border-radius: 1rem;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+        }
+        video {
+            border-radius: 0.75rem;
+            background: #f0f0f0;
+        }
+        .detection-badge {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary">🚗 Toll Plaza Vehicle Detection</h1>
+            <p class="lead text-muted">Real-time identification | Daily reports | Hourly heatmap</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Column: Upload Image -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h3 class="card-title mb-3"><i class="bi bi-upload me-2"></i>Upload Image</h3>
+                        <input type="file" id="imageInput" accept="image/*" class="form-control mb-3">
+                        <button id="uploadBtn" class="btn btn-primary w-100 mb-3">
+                            <i class="bi bi-search me-2"></i>Detect Vehicles
+                        </button>
+                        <div id="uploadResult" class="mt-3"></div>
+                        <img id="preview" class="img-fluid rounded mt-3" style="display:none;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Live Camera -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h3 class="card-title mb-3"><i class="bi bi-camera-video me-2"></i>Live Camera</h3>
+                        <video id="video" width="100%" autoplay class="mb-3 border rounded"></video>
+                        <button id="captureBtn" class="btn btn-success w-100">
+                            <i class="bi bi-camera me-2"></i>Capture & Detect
+                        </button>
+                        <div id="cameraResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Detections & Report Button -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Recent Detections</h3>
+                    <button id="downloadReportBtn" class="btn btn-outline-primary">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Download Today's Report
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="recentTable">
+                        <thead>
+                            <tr><th>Time</th><th>Vehicle Type</th><th>Confidence</th></tr>
+                        </thead>
+                        <tbody id="recentTbody">
+                            <tr><td colspan="3" class="text-center text-muted">No detections yet</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Heatmap Section -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h3 class="card-title mb-3"><i class="bi bi-calendar-heat me-2"></i>Hourly Vehicle Frequency (Heatmap)</h3>
+                <canvas id="heatmapChart" width="800" height="400"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+
+        // Helper: display detection results in a given container
+        function displayResult(container, detections) {
+            if (!detections.length) {
+                container.innerHTML = '<div class="alert alert-warning mb-0">No vehicles detected.</div>';
+                return;
+            }
+            let html = '<div class="list-group">';
+            detections.forEach(d => {
+                html += `<div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span><strong>${d.type}</strong></span>
+                            <span class="badge bg-primary rounded-pill">${(d.confidence*100).toFixed(1)}%</span>
+                         </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Refresh recent detections table
+        async function refreshRecent() {
+            try {
+                const resp = await fetch(`${API_BASE}/detect/records?limit=10`);
+                const records = await resp.json();
+                const tbody = document.getElementById('recentTbody');
+                if (!records.length) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No detections yet</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = records.map(r => `
+                    <tr>
+                        <td>${new Date(r.timestamp).toLocaleString()}</td>
+                        <td>${r.vehicle_type}</td>
+                        <td>${(r.confidence*100).toFixed(1)}%</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to fetch recent detections", err);
+            }
+        }
+
+        // Upload image detection
+        document.getElementById('uploadBtn').onclick = async () => {
+            const file = document.getElementById('imageInput').files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await fetch(`${API_BASE}/detect/`, { method: 'POST', body: formData });
+            const data = await resp.json();
+            displayResult(document.getElementById('uploadResult'), data.detections);
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = document.getElementById('preview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            refreshRecent();
+        };
+
+        // Live camera setup
+        const video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => console.error("Camera access denied:", err));
+
+        document.getElementById('captureBtn').onclick = async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(async blob => {
+                const formData = new FormData();
+                formData.append('file', blob, 'capture.jpg');
+                const resp = await fetch(`${API_BASE}/detect/`, { method: 'POST', body: formData });
+                const data = await resp.json();
+                displayResult(document.getElementById('cameraResult'), data.detections);
+                refreshRecent();
+            }, 'image/jpeg');
+        };
+
+        // Download daily report
+        document.getElementById('downloadReportBtn').onclick = () => {
+            const today = new Date().toISOString().split('T')[0];
+            window.location.href = `${API_BASE}/reports/daily?date=${today}`;
+        };
+
+        // Fetch and draw heatmap (hourly counts for current month)
+        async function drawHeatmap() {
+            const today = new Date();
+            const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            const end = today.toISOString().split('T')[0];
+            try {
+                const resp = await fetch(`${API_BASE}/heatmap/?start=${start}&end=${end}`);
+                const data = await resp.json();
+                const hours = [...Array(24).keys()];
+                const vehicleTypes = [...new Set(data.map(d => d.vehicle_type))];
+                const datasets = vehicleTypes.map(type => ({
+                    label: type,
+                    data: hours.map(hour => {
+                        const entry = data.find(d => d.hour === hour && d.vehicle_type === type);
+                        return entry ? entry.count : 0;
+                    }),
+                    borderWidth: 1,
+                    fill: false
+                }));
+                const ctx = document.getElementById('heatmapChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: hours.map(h => `${h}:00`),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: 'Number of Vehicles' } },
+                            x: { title: { display: true, text: 'Hour of Day' } }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Heatmap error", err);
+            }
+        }
+
+        // Initial load
+        refreshRecent();
+        drawHeatmap();
+    </script>
+</body>
+</html>
