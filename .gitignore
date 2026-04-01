@@ -2,4 +2,7 @@ venv/
 __pycache__/
 *.pyc
 .env
-models/
+models/yolov8m.pt
+backend/models/
+*.zip
+.DS_Store

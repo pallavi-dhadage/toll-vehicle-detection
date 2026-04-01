@@ -4,233 +4,643 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toll Plaza Vehicle Detection System</title>
-    <!-- Bootstrap 5 CSS + Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Tailwind CSS (for utilities, can be used alongside Bootstrap) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for heatmap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        /* Custom overrides for better integration */
-        .card {
-            border-radius: 1rem;
-            transition: transform 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-4px);
-        }
-        video {
-            border-radius: 0.75rem;
-            background: #f0f0f0;
-        }
-        .detection-badge {
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .sidebar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: #555; }
+        .content-section { transition: opacity 0.2s ease; }
+        .active-nav { background-color: #1e40af; color: white; }
+        .active-nav i, .active-nav span { color: white; }
+        .nav-item { transition: background-color 0.2s; }
+        .nav-item:hover:not(.active-nav) { background-color: #e2e8f0; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .progress-bar { transition: width 0.3s ease; }
+        .tab-button.active { border-bottom: 2px solid #1e40af; color: #1e40af; }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container py-5">
-        <!-- Header -->
-        <div class="text-center mb-5">
-            <h1 class="display-4 fw-bold text-primary">🚗 Toll Plaza Vehicle Detection</h1>
-            <p class="lead text-muted">Real-time identification | Daily reports | Hourly heatmap</p>
-        </div>
+<body class="bg-gray-100 font-sans antialiased">
 
-        <div class="row g-4">
-            <!-- Left Column: Upload Image -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <h3 class="card-title mb-3"><i class="bi bi-upload me-2"></i>Upload Image</h3>
-                        <input type="file" id="imageInput" accept="image/*" class="form-control mb-3">
-                        <button id="uploadBtn" class="btn btn-primary w-100 mb-3">
-                            <i class="bi bi-search me-2"></i>Detect Vehicles
-                        </button>
-                        <div id="uploadResult" class="mt-3"></div>
-                        <img id="preview" class="img-fluid rounded mt-3" style="display:none;">
+<div class="flex h-screen overflow-hidden">
+    <aside class="sidebar w-64 bg-white shadow-lg flex flex-col overflow-y-auto z-10">
+        <div class="p-5 border-b">
+            <h1 class="text-2xl font-bold text-blue-800 flex items-center gap-2">
+                <i class="bi bi-car-front-fill"></i>
+                <span>TollPlaza AI</span>
+            </h1>
+            <p class="text-xs text-gray-500 mt-1">Vehicle Detection System</p>
+        </div>
+        <nav class="flex-1 py-4">
+            <ul class="space-y-1">
+                <li><a href="#dashboard" data-page="dashboard" class="nav-item flex items-center gap-3 px-5 py-3 text-gray-700 hover:bg-gray-100"><i class="bi bi-speedometer2 text-xl"></i><span>Dashboard</span></a></li>
+                <li><a href="#reports" data-page="reports" class="nav-item flex items-center gap-3 px-5 py-3 text-gray-700 hover:bg-gray-100"><i class="bi bi-file-earmark-excel text-xl"></i><span>Reports</span></a></li>
+                <li><a href="#heatmap" data-page="heatmap" class="nav-item flex items-center gap-3 px-5 py-3 text-gray-700 hover:bg-gray-100"><i class="bi bi-calendar-heat text-xl"></i><span>Heatmap</span></a></li>
+                <li><a href="#streams" data-page="streams" class="nav-item flex items-center gap-3 px-5 py-3 text-gray-700 hover:bg-gray-100"><i class="bi bi-camera-reels text-xl"></i><span>Live Streams</span></a></li>
+                <li><a href="#admin" data-page="admin" class="nav-item flex items-center gap-3 px-5 py-3 text-gray-700 hover:bg-gray-100"><i class="bi bi-shield-lock text-xl"></i><span>Admin Panel</span></a></li>
+            </ul>
+        </nav>
+        <div class="p-4 border-t text-xs text-gray-500">
+            <div id="auth-info" class="mb-2"></div>
+            <i class="bi bi-database"></i> Real-time data<br>
+            <i class="bi bi-cloud-check"></i> Live detection
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-6">
+        <!-- Dashboard Section (same as before) -->
+        <div id="dashboard-section" class="content-section">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-md p-5">
+                    <h2 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="bi bi-upload text-blue-600"></i> Upload Images / ZIP</h2>
+                    <input type="file" id="uploadFiles" multiple accept="image/*,.zip" class="w-full border rounded-lg p-2 mb-3">
+                    <button id="uploadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Detect Vehicles</button>
+                    <div id="uploadProgress" class="mt-3 hidden">
+                        <div class="bg-gray-200 rounded-full h-2.5"><div id="uploadProgressBar" class="bg-blue-600 h-2.5 rounded-full progress-bar" style="width:0%"></div></div>
+                        <p id="uploadStatus" class="text-sm text-gray-600 mt-1"></p>
                     </div>
+                    <div id="uploadResults" class="mt-4 max-h-96 overflow-y-auto"></div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-5">
+                    <h2 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="bi bi-camera-video text-green-600"></i> Live Camera</h2>
+                    <video id="video" width="100%" autoplay class="rounded-lg border bg-black mb-3"></video>
+                    <button id="captureBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Capture & Detect</button>
+                    <div id="cameraResult" class="mt-4"></div>
                 </div>
             </div>
 
-            <!-- Right Column: Live Camera -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <h3 class="card-title mb-3"><i class="bi bi-camera-video me-2"></i>Live Camera</h3>
-                        <video id="video" width="100%" autoplay class="mb-3 border rounded"></video>
-                        <button id="captureBtn" class="btn btn-success w-100">
-                            <i class="bi bi-camera me-2"></i>Capture & Detect
-                        </button>
-                        <div id="cameraResult" class="mt-3"></div>
-                    </div>
+            <div class="bg-white rounded-xl shadow-md p-5 mt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold"><i class="bi bi-clock-history"></i> Recent Detections</h2>
+                    <button id="downloadReportBtn" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">Download Today's Report</button>
                 </div>
-            </div>
-        </div>
-
-        <!-- Recent Detections & Report Button -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Recent Detections</h3>
-                    <button id="downloadReportBtn" class="btn btn-outline-primary">
-                        <i class="bi bi-file-earmark-excel me-2"></i>Download Today's Report
-                    </button>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle" id="recentTable">
-                        <thead>
-                            <tr><th>Time</th><th>Vehicle Type</th><th>Confidence</th></tr>
-                        </thead>
-                        <tbody id="recentTbody">
-                            <tr><td colspan="3" class="text-center text-muted">No detections yet</td></tr>
-                        </tbody>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead><tr class="bg-gray-100 text-gray-600 text-sm"><th class="py-2 px-4 text-left">Time</th><th class="py-2 px-4 text-left">Vehicle Type</th><th class="py-2 px-4 text-left">Confidence</th> </tr></thead>
+                        <tbody id="recentTbody"><tr><td colspan="3" class="text-center text-gray-500 py-4">No detections yet</td></tr></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Heatmap Section -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-body">
-                <h3 class="card-title mb-3"><i class="bi bi-calendar-heat me-2"></i>Hourly Vehicle Frequency (Heatmap)</h3>
-                <canvas id="heatmapChart" width="800" height="400"></canvas>
+        <!-- Reports Section -->
+        <div id="reports-section" class="content-section hidden">
+            <div class="bg-white rounded-xl shadow-md p-5">
+                <h2 class="text-xl font-semibold mb-4"><i class="bi bi-file-earmark-excel"></i> Daily Reports</h2>
+                <p class="text-gray-600 mb-4">Download Excel reports for any date.</p>
+                <div class="flex flex-col sm:flex-row gap-4 items-end">
+                    <div><label class="block text-sm font-medium mb-1">Select Date</label><input type="date" id="reportDate" class="border rounded-lg p-2" value="2026-04-01"></div>
+                    <button id="downloadSpecificReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Download Report</button>
+                </div>
+                <div class="mt-6"><h3 class="text-lg font-semibold">Quick Access</h3><button id="downloadTodayReportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg mt-2">Download Today's Report</button></div>
             </div>
         </div>
+
+        <!-- Heatmap Section -->
+        <div id="heatmap-section" class="content-section hidden">
+            <div class="bg-white rounded-xl shadow-md p-5">
+                <h2 class="text-xl font-semibold mb-4"><i class="bi bi-calendar-heat"></i> Hourly Vehicle Frequency (Heatmap)</h2>
+                <canvas id="heatmapChart" width="800" height="400"></canvas>
+                <div class="mt-4 text-sm text-gray-500">Data for current month</div>
+            </div>
+        </div>
+
+        <!-- Streams Section (Enhanced) -->
+        <div id="streams-section" class="content-section hidden">
+            <div class="bg-white rounded-xl shadow-md p-5">
+                <h2 class="text-xl font-semibold mb-4"><i class="bi bi-camera-reels"></i> Live Camera Streams</h2>
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold">Add a new camera</h3>
+                    <div class="flex gap-2 flex-wrap">
+                        <input type="text" id="cameraId" placeholder="Camera ID (unique)" class="border rounded p-2">
+                        <input type="text" id="cameraUrl" placeholder="RTSP/HTTP URL" class="border rounded p-2 flex-1">
+                        <input type="number" id="cameraFps" placeholder="FPS (2)" class="border rounded p-2 w-20" value="2">
+                        <button id="addCameraBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Add Camera</button>
+                    </div>
+                </div>
+                <div id="camerasList" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-section" class="content-section hidden"></div>
+    </main>
+</div>
+
+<!-- Authentication Modal (unchanged) -->
+<div id="authModal" class="modal-overlay hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-96 p-6 relative">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex space-x-4">
+                <button id="loginTabBtn" class="tab-button text-lg font-semibold pb-1 focus:outline-none">Login</button>
+                <button id="signupTabBtn" class="tab-button text-lg font-semibold pb-1 focus:outline-none">Sign Up</button>
+            </div>
+            <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="loginForm" class="auth-form">
+            <div class="mb-4"><label class="block text-gray-700 mb-1">Email</label><input type="email" id="loginEmail" class="w-full border rounded-lg p-2" placeholder="admin@example.com"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-1">Password</label><input type="password" id="loginPassword" class="w-full border rounded-lg p-2" placeholder="••••••••"></div>
+            <div id="loginError" class="text-red-500 text-sm mb-2 hidden"></div>
+            <button id="loginBtn" class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700">Login</button>
+        </div>
+        <div id="signupForm" class="auth-form hidden">
+            <div class="mb-4"><label class="block text-gray-700 mb-1">Full Name</label><input type="text" id="signupName" class="w-full border rounded-lg p-2" placeholder="John Doe"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-1">Email</label><input type="email" id="signupEmail" class="w-full border rounded-lg p-2" placeholder="admin@example.com"></div>
+            <div class="mb-4"><label class="block text-gray-700 mb-1">Password</label><input type="password" id="signupPassword" class="w-full border rounded-lg p-2" placeholder="••••••••"></div>
+            <div id="signupError" class="text-red-500 text-sm mb-2 hidden"></div>
+            <button id="signupBtn" class="bg-green-600 text-white w-full py-2 rounded-lg hover:bg-green-700">Sign Up</button>
+        </div>
     </div>
+</div>
 
-    <script>
-        const API_BASE = "http://localhost:8000";
+<script>
+    const apiBase = "http://localhost:8000";
+    let currentPage = "dashboard";
+    let currentUser = null;
+    let token = localStorage.getItem('token');
+    let wsConnections = {};  // camera_id -> WebSocket
+    let cameraStats = {};     // camera_id -> { counts: { car:0, truck:0, ... }, total:0 }
 
-        // Helper: display detection results in a given container
-        function displayResult(container, detections) {
-            if (!detections.length) {
-                container.innerHTML = '<div class="alert alert-warning mb-0">No vehicles detected.</div>';
-                return;
-            }
-            let html = '<div class="list-group">';
-            detections.forEach(d => {
-                html += `<div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><strong>${d.type}</strong></span>
-                            <span class="badge bg-primary rounded-pill">${(d.confidence*100).toFixed(1)}%</span>
-                         </div>`;
+    // Helper: fetch with token
+    async function fetchWithAuth(url, options = {}) {
+        if (token) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+        const response = await fetch(url, options);
+        if (response.status === 401) {
+            logout();
+            throw new Error('Session expired');
+        }
+        return response;
+    }
+
+    // Update UI based on login state
+    function updateAuthUI() {
+        const authInfo = document.getElementById('auth-info');
+        if (currentUser) {
+            authInfo.innerHTML = `<div class="flex items-center gap-2"><i class="bi bi-person-circle"></i><span>${currentUser.full_name || currentUser.email}</span><button id="logoutBtn" class="text-red-500 text-xs hover:text-red-700 ml-2">Logout</button></div>`;
+            document.getElementById('logoutBtn')?.addEventListener('click', logout);
+        } else {
+            authInfo.innerHTML = `<button id="showLoginBtn" class="text-blue-600 hover:text-blue-800 text-sm">Login / Sign Up</button>`;
+            document.getElementById('showLoginBtn')?.addEventListener('click', showAuthModal);
+        }
+    }
+
+    function showAuthModal() {
+        document.getElementById('authModal').classList.remove('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+        document.getElementById('loginTabBtn').classList.add('active');
+        document.getElementById('signupTabBtn').classList.remove('active');
+    }
+
+    function hideAuthModal() {
+        document.getElementById('authModal').classList.add('hidden');
+        document.getElementById('loginError').classList.add('hidden');
+        document.getElementById('signupError').classList.add('hidden');
+    }
+
+    async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
+        try {
+            const resp = await fetch(`${apiBase}/auth/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
             });
-            html += '</div>';
-            container.innerHTML = html;
-        }
-
-        // Refresh recent detections table
-        async function refreshRecent() {
-            try {
-                const resp = await fetch(`${API_BASE}/detect/records?limit=10`);
-                const records = await resp.json();
-                const tbody = document.getElementById('recentTbody');
-                if (!records.length) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No detections yet</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = records.map(r => `
-                    <tr>
-                        <td>${new Date(r.timestamp).toLocaleString()}</td>
-                        <td>${r.vehicle_type}</td>
-                        <td>${(r.confidence*100).toFixed(1)}%</td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                console.error("Failed to fetch recent detections", err);
+            if (resp.ok) {
+                const data = await resp.json();
+                token = data.access_token;
+                localStorage.setItem('token', token);
+                const userResp = await fetchWithAuth(`${apiBase}/auth/me`);
+                currentUser = await userResp.json();
+                updateAuthUI();
+                hideAuthModal();
+                if (currentPage === 'admin') loadAdminPage();
+            } else {
+                const err = await resp.json();
+                document.getElementById('loginError').innerText = err.detail || 'Login failed';
+                document.getElementById('loginError').classList.remove('hidden');
             }
+        } catch (err) {
+            document.getElementById('loginError').innerText = 'Network error';
+            document.getElementById('loginError').classList.remove('hidden');
         }
+    }
 
-        // Upload image detection
-        document.getElementById('uploadBtn').onclick = async () => {
-            const file = document.getElementById('imageInput').files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            const resp = await fetch(`${API_BASE}/detect/`, { method: 'POST', body: formData });
-            const data = await resp.json();
-            displayResult(document.getElementById('uploadResult'), data.detections);
-            // Show image preview
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = document.getElementById('preview');
-                img.src = e.target.result;
-                img.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-            refreshRecent();
+    async function signup() {
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const password = document.getElementById('signupPassword').value;
+        try {
+            const resp = await fetch(`${apiBase}/auth/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_name: name, email, password })
+            });
+            if (resp.ok) {
+                document.getElementById('loginEmail').value = email;
+                document.getElementById('loginPassword').value = password;
+                await login();
+            } else {
+                const err = await resp.json();
+                document.getElementById('signupError').innerText = err.detail || 'Signup failed';
+                document.getElementById('signupError').classList.remove('hidden');
+            }
+        } catch (err) {
+            document.getElementById('signupError').innerText = 'Network error';
+            document.getElementById('signupError').classList.remove('hidden');
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        token = null;
+        currentUser = null;
+        updateAuthUI();
+        if (currentPage === 'admin') {
+            window.location.hash = '#dashboard';
+            showPage('dashboard');
+        }
+        document.getElementById('admin-section').innerHTML = '';
+    }
+
+    // --- Admin Panel (protected) ---
+    async function loadAdminPage() {
+        if (!currentUser) {
+            showAuthModal();
+            return;
+        }
+        const adminDiv = document.getElementById('admin-section');
+        adminDiv.innerHTML = `
+            <div class="bg-white rounded-xl shadow-md p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold"><i class="bi bi-shield-lock"></i> Admin Panel</h2>
+                    <button id="adminLogoutBtn" class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600">Logout</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-4">
+                        <h3 class="text-lg font-semibold">Database Stats</h3>
+                        <p id="dbStats" class="mt-2 text-gray-600">Loading...</p>
+                    </div>
+                    <div class="border rounded-lg p-4">
+                        <h3 class="text-lg font-semibold">System Info</h3>
+                        <p class="mt-2 text-gray-600">Backend: <span id="backendStatus" class="font-mono">checking...</span></p>
+                        <p class="mt-1 text-gray-600">Model: YOLOv8n (COCO)</p>
+                        <p class="mt-1 text-gray-600">Detected classes: car, truck, bus, motorcycle, bicycle</p>
+                    </div>
+                </div>
+                <div class="mt-6 border-t pt-4">
+                    <h3 class="text-lg font-semibold">Management Actions</h3>
+                    <button id="clearDatabaseBtn" class="bg-red-600 text-white px-4 py-2 rounded-lg mt-2 hover:bg-red-700">Clear All Detection Records</button>
+                    <div id="clearMessage" class="mt-2 text-sm"></div>
+                </div>
+            </div>`;
+        document.getElementById('adminLogoutBtn').onclick = logout;
+        document.getElementById('clearDatabaseBtn').onclick = async () => {
+            if (confirm('Are you sure you want to delete ALL detection records? This cannot be undone.')) {
+                document.getElementById('clearMessage').innerHTML = '<span class="text-red-500">Functionality not implemented in demo. Add DELETE /detect/clear endpoint.</span>';
+            }
         };
+        try {
+            const statsResp = await fetchWithAuth(`${apiBase}/detect/records?limit=1000`);
+            const records = await statsResp.json();
+            const total = records.length;
+            const uniqueTypes = [...new Set(records.map(r => r.vehicle_type))];
+            document.getElementById('dbStats').innerHTML = `Total detections: ${total}<br>Unique vehicle types: ${uniqueTypes.length}<br>Last detection: ${records[0] ? new Date(records[0].timestamp).toLocaleString() : 'none'}`;
+        } catch (err) {
+            document.getElementById('dbStats').innerHTML = 'Could not load stats.';
+        }
+        try {
+            const ping = await fetch(`${apiBase}/`);
+            if (ping.ok) document.getElementById('backendStatus').innerHTML = 'Online';
+            else document.getElementById('backendStatus').innerHTML = 'Error';
+        } catch (err) {
+            document.getElementById('backendStatus').innerHTML = 'Offline';
+        }
+    }
 
-        // Live camera setup
-        const video = document.getElementById('video');
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => { video.srcObject = stream; })
-            .catch(err => console.error("Camera access denied:", err));
+    // --- Dashboard / upload logic (unchanged from previous) ---
+    async function fetchRecent() {
+        try {
+            const resp = await fetch(`${apiBase}/detect/records?limit=10`);
+            const records = await resp.json();
+            const tbody = document.getElementById('recentTbody');
+            if (!records.length) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-gray-500 py-4">No detections yet</td></tr>'; return; }
+            tbody.innerHTML = records.map(r => `<tr class="border-b"><td class="py-2 px-4">${new Date(r.timestamp).toLocaleString()}</td><td class="py-2 px-4">${r.vehicle_type}</td><td class="py-2 px-4">${(r.confidence*100).toFixed(1)}%</td></tr>`).join('');
+        } catch (err) { console.error("Failed to fetch recent detections", err); }
+    }
 
-        document.getElementById('captureBtn').onclick = async () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(async blob => {
-                const formData = new FormData();
-                formData.append('file', blob, 'capture.jpg');
-                const resp = await fetch(`${API_BASE}/detect/`, { method: 'POST', body: formData });
-                const data = await resp.json();
-                displayResult(document.getElementById('cameraResult'), data.detections);
-                refreshRecent();
-            }, 'image/jpeg');
-        };
+    async function sendImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const resp = await fetch(`${apiBase}/detect/`, { method: 'POST', body: formData });
+        const data = await resp.json();
+        return { fileName: file.name, detections: data.detections };
+    }
 
-        // Download daily report
-        document.getElementById('downloadReportBtn').onclick = () => {
-            const today = new Date().toISOString().split('T')[0];
-            window.location.href = `${API_BASE}/reports/daily?date=${today}`;
-        };
-
-        // Fetch and draw heatmap (hourly counts for current month)
-        async function drawHeatmap() {
-            const today = new Date();
-            const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            const end = today.toISOString().split('T')[0];
-            try {
-                const resp = await fetch(`${API_BASE}/heatmap/?start=${start}&end=${end}`);
-                const data = await resp.json();
-                const hours = [...Array(24).keys()];
-                const vehicleTypes = [...new Set(data.map(d => d.vehicle_type))];
-                const datasets = vehicleTypes.map(type => ({
-                    label: type,
-                    data: hours.map(hour => {
-                        const entry = data.find(d => d.hour === hour && d.vehicle_type === type);
-                        return entry ? entry.count : 0;
-                    }),
-                    borderWidth: 1,
-                    fill: false
-                }));
-                const ctx = document.getElementById('heatmapChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: hours.map(h => `${h}:00`),
-                        datasets: datasets
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: { beginAtZero: true, title: { display: true, text: 'Number of Vehicles' } },
-                            x: { title: { display: true, text: 'Hour of Day' } }
+    async function processFiles(files, progressCallback) {
+        let allImageFiles = [];
+        for (const file of files) {
+            if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
+                try {
+                    const zip = await JSZip.loadAsync(file);
+                    for (const [filename, zipEntry] of Object.entries(zip.files)) {
+                        if (!zipEntry.dir && /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(filename)) {
+                            const blob = await zipEntry.async('blob');
+                            const imageFile = new File([blob], filename, { type: blob.type });
+                            allImageFiles.push(imageFile);
                         }
                     }
-                });
-            } catch (err) {
-                console.error("Heatmap error", err);
+                } catch (err) { console.error(`Failed to extract zip ${file.name}:`, err); }
+            } else if (file.type.startsWith('image/')) {
+                allImageFiles.push(file);
             }
         }
+        const total = allImageFiles.length;
+        let results = [];
+        for (let i = 0; i < total; i++) {
+            try {
+                const result = await sendImage(allImageFiles[i]);
+                results.push(result);
+            } catch (err) {
+                results.push({ fileName: allImageFiles[i].name, error: 'Detection failed' });
+            }
+            progressCallback({ total, processed: i+1, results });
+        }
+        return results;
+    }
 
-        // Initial load
-        refreshRecent();
+    document.getElementById('uploadBtn').onclick = async () => {
+        const files = Array.from(document.getElementById('uploadFiles').files);
+        if (!files.length) return;
+        const progressDiv = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const statusText = document.getElementById('uploadStatus');
+        const resultsDiv = document.getElementById('uploadResults');
+        progressDiv.classList.remove('hidden');
+        progressBar.style.width = '0%';
+        statusText.textContent = 'Processing...';
+        resultsDiv.innerHTML = '<div class="text-gray-500">Processing...</div>';
+        const onProgress = ({ total, processed, results }) => {
+            const percent = total ? (processed / total) * 100 : 0;
+            progressBar.style.width = `${percent}%`;
+            statusText.textContent = `Processed ${processed} of ${total} images`;
+            if (processed === total) {
+                if (results.length === 0) resultsDiv.innerHTML = '<div class="text-red-500">No valid images found.</div>';
+                else {
+                    let html = '<div class="space-y-4"><h3 class="font-semibold">Detection Results:</h3>';
+                    results.forEach(res => {
+                        if (res.error) html += `<div class="border rounded p-2"><span class="font-mono">${res.fileName}</span>: <span class="text-red-500">${res.error}</span></div>`;
+                        else {
+                            const detections = res.detections;
+                            if (!detections.length) html += `<div class="border rounded p-2"><span class="font-mono">${res.fileName}</span>: <span class="text-yellow-500">No vehicles detected</span></div>`;
+                            else {
+                                let detHtml = `<div class="border rounded p-2"><span class="font-mono">${res.fileName}</span>: `;
+                                detHtml += detections.map(d => `${d.type} (${(d.confidence*100).toFixed(1)}%)`).join(', ');
+                                detHtml += '</div>';
+                                html += detHtml;
+                            }
+                        }
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                }
+                fetchRecent();
+            }
+        };
+        await processFiles(files, onProgress);
+    };
+
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => video.srcObject = stream).catch(err => console.error("Camera error:", err));
+    document.getElementById('captureBtn').onclick = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(async blob => {
+            const formData = new FormData(); formData.append('file', blob, 'capture.jpg');
+            const resp = await fetch(`${apiBase}/detect/`, { method: 'POST', body: formData });
+            const data = await resp.json();
+            const container = document.getElementById('cameraResult');
+            if (!data.detections.length) container.innerHTML = '<div class="text-red-500">No vehicles detected.</div>';
+            else {
+                let html = '<div class="space-y-2 mt-2">';
+                data.detections.forEach(d => { html += `<div class="flex justify-between items-center border-b pb-1"><span class="font-medium">${d.type}</span><span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">${(d.confidence*100).toFixed(1)}%</span></div>`; });
+                html += '</div>';
+                container.innerHTML = html;
+            }
+            fetchRecent();
+        }, 'image/jpeg');
+    };
+
+    // Reports
+    document.getElementById('downloadTodayReportBtn').onclick = () => { const today = new Date().toISOString().split('T')[0]; window.location.href = `${apiBase}/reports/daily?date=${today}`; };
+    document.getElementById('downloadSpecificReportBtn').onclick = () => { const date = document.getElementById('reportDate').value; if (date) window.location.href = `${apiBase}/reports/daily?date=${date}`; };
+    document.getElementById('downloadReportBtn').onclick = () => { const today = new Date().toISOString().split('T')[0]; window.location.href = `${apiBase}/reports/daily?date=${today}`; };
+
+    // Heatmap
+    async function drawHeatmap() {
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        const end = today.toISOString().split('T')[0];
+        try {
+            const resp = await fetch(`${apiBase}/heatmap/?start=${start}&end=${end}`);
+            const data = await resp.json();
+            const hours = [...Array(24).keys()];
+            const vehicleTypes = [...new Set(data.map(d => d.vehicle_type))];
+            const datasets = vehicleTypes.map(type => ({ label: type, data: hours.map(hour => { const entry = data.find(d => d.hour === hour && d.vehicle_type === type); return entry ? entry.count : 0; }), borderWidth: 1, fill: false }));
+            const ctx = document.getElementById('heatmapChart').getContext('2d');
+            new Chart(ctx, { type: 'bar', data: { labels: hours.map(h => `${h}:00`), datasets }, options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Vehicles' } }, x: { title: { display: true, text: 'Hour of Day' } } } } });
+        } catch (err) { console.error("Heatmap error", err); }
+    }
+
+    // --- Live Streams (Enhanced with cross-section stats) ---
+    function updateCameraStatsUI(cameraId) {
+        const stats = cameraStats[cameraId];
+        if (!stats) return;
+        const statsDiv = document.getElementById(`stats-${cameraId}`);
+        if (!statsDiv) return;
+        const vehicleTypes = ['car', 'truck', 'bus', 'motorcycle', 'bicycle'];
+        let html = '<div class="text-xs space-y-1"><div class="font-semibold">Cross-section (since last reset):</div>';
+        for (const type of vehicleTypes) {
+            const count = stats.counts[type] || 0;
+            html += `<div class="flex justify-between"><span>${type}:</span><span class="font-mono">${count}</span></div>`;
+        }
+        html += `<div class="flex justify-between pt-1 border-t"><span>Total:</span><span class="font-mono">${stats.total}</span></div>`;
+        html += `<button data-camera="${cameraId}" class="reset-stats-btn mt-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded">Reset Stats</button>`;
+        html += '</div>';
+        statsDiv.innerHTML = html;
+        // Attach reset button event
+        const resetBtn = statsDiv.querySelector('.reset-stats-btn');
+        if (resetBtn) {
+            resetBtn.onclick = () => {
+                cameraStats[cameraId] = { counts: { car:0, truck:0, bus:0, motorcycle:0, bicycle:0 }, total: 0 };
+                updateCameraStatsUI(cameraId);
+            };
+        }
+    }
+
+    function addCameraToList(cameraId, cameraUrl) {
+        const camerasDiv = document.getElementById('camerasList');
+        const card = document.createElement('div');
+        card.className = 'bg-white border rounded-lg shadow-sm overflow-hidden';
+        card.id = `cam-${cameraId}`;
+        card.innerHTML = `
+            <div class="p-3 bg-gray-50 flex justify-between items-center">
+                <span class="font-semibold">${cameraId}</span>
+                <button class="remove-cam text-red-500 hover:text-red-700" data-camera-id="${cameraId}">Remove</button>
+            </div>
+            <div class="relative">
+                <video id="video-${cameraId}" autoplay muted class="w-full bg-black" style="min-height: 240px;"></video>
+                <canvas id="canvas-${cameraId}" class="absolute top-0 left-0 w-full h-full" style="pointer-events: none;"></canvas>
+            </div>
+            <div class="p-2 text-xs text-gray-500" id="status-${cameraId}">Connecting...</div>
+            <div id="stats-${cameraId}" class="p-2 border-t text-xs bg-gray-50"></div>
+        `;
+        camerasDiv.appendChild(card);
+
+        // Initialize stats for this camera
+        cameraStats[cameraId] = { counts: { car:0, truck:0, bus:0, motorcycle:0, bicycle:0 }, total: 0 };
+        updateCameraStatsUI(cameraId);
+
+        const videoElem = document.getElementById(`video-${cameraId}`);
+        videoElem.src = cameraUrl;
+        videoElem.load();
+        videoElem.onerror = () => { document.getElementById(`status-${cameraId}`).textContent = 'Failed to load video stream.'; };
+
+        const ws = new WebSocket(`ws://localhost:8000/stream/ws/${cameraId}`);
+        ws.onopen = () => { document.getElementById(`status-${cameraId}`).textContent = 'Connected, waiting for detections...'; };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const detections = data.detections;
+            const canvas = document.getElementById(`canvas-${cameraId}`);
+            const ctx = canvas.getContext('2d');
+            const video = document.getElementById(`video-${cameraId}`);
+            if (video.videoWidth) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                detections.forEach(det => {
+                    const [x1, y1, x2, y2] = det.bbox;
+                    const scaleX = canvas.width / 640;
+                    const scaleY = canvas.height / 480;
+                    ctx.strokeStyle = 'lime';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x1 * scaleX, y1 * scaleY, (x2 - x1) * scaleX, (y2 - y1) * scaleY);
+                    ctx.fillStyle = 'lime';
+                    ctx.font = '12px monospace';
+                    ctx.fillText(`${det.type} ${(det.confidence*100).toFixed(0)}%`, x1 * scaleX, y1 * scaleY - 5);
+                });
+            }
+            // Update stats
+            const stats = cameraStats[cameraId];
+            detections.forEach(det => {
+                const type = det.type;
+                if (stats.counts.hasOwnProperty(type)) {
+                    stats.counts[type]++;
+                    stats.total++;
+                }
+            });
+            updateCameraStatsUI(cameraId);
+        };
+        ws.onclose = () => { document.getElementById(`status-${cameraId}`).textContent = 'WebSocket disconnected'; };
+        ws.onerror = () => { document.getElementById(`status-${cameraId}`).textContent = 'WebSocket error'; };
+        wsConnections[cameraId] = ws;
+
+        card.querySelector('.remove-cam').onclick = async () => {
+            await fetch(`${apiBase}/stream/remove/${cameraId}`, { method: 'DELETE' });
+            if (wsConnections[cameraId]) {
+                wsConnections[cameraId].close();
+                delete wsConnections[cameraId];
+            }
+            delete cameraStats[cameraId];
+            card.remove();
+        };
+    }
+
+    document.getElementById('addCameraBtn').onclick = async () => {
+        const cameraId = document.getElementById('cameraId').value.trim();
+        const url = document.getElementById('cameraUrl').value.trim();
+        const fps = parseInt(document.getElementById('cameraFps').value) || 2;
+        if (!cameraId || !url) return alert('Camera ID and URL required');
+        const resp = await fetch(`${apiBase}/stream/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ camera_id: cameraId, url: url, fps: fps })
+        });
+        if (resp.ok) {
+            addCameraToList(cameraId, url);
+            document.getElementById('cameraId').value = '';
+            document.getElementById('cameraUrl').value = '';
+        } else {
+            const err = await resp.json();
+            alert('Error: ' + err.detail);
+        }
+    };
+
+    // --- Auth UI handlers ---
+    document.getElementById('loginTabBtn').onclick = () => {
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+        document.getElementById('loginTabBtn').classList.add('active');
+        document.getElementById('signupTabBtn').classList.remove('active');
+    };
+    document.getElementById('signupTabBtn').onclick = () => {
+        document.getElementById('signupForm').classList.remove('hidden');
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('signupTabBtn').classList.add('active');
+        document.getElementById('loginTabBtn').classList.remove('active');
+    };
+    document.getElementById('closeModalBtn').onclick = hideAuthModal;
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('signupBtn').onclick = signup;
+
+    // Page navigation
+    function showPage(pageId) {
+        document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
+        document.getElementById(`${pageId}-section`).classList.remove('hidden');
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active-nav'));
+        document.querySelector(`a[data-page="${pageId}"]`).classList.add('active-nav');
+        currentPage = pageId;
+        if (pageId === 'dashboard') fetchRecent();
+        else if (pageId === 'heatmap') drawHeatmap();
+        else if (pageId === 'admin') {
+            if (sessionStorage.getItem('adminLoggedIn') === 'true') loadAdminPage();
+            else showAuthModal();
+        }
+    }
+
+    window.addEventListener('hashchange', () => {
+        let hash = window.location.hash.slice(1) || 'dashboard';
+        if (['dashboard','reports','heatmap','streams','admin'].includes(hash)) showPage(hash);
+        else showPage('dashboard');
+    });
+
+    window.addEventListener('load', async () => {
+        if (token) {
+            try {
+                const resp = await fetchWithAuth(`${apiBase}/auth/me`);
+                if (resp.ok) currentUser = await resp.json();
+                else logout();
+            } catch (err) { logout(); }
+        }
+        updateAuthUI();
+        let hash = window.location.hash.slice(1) || 'dashboard';
+        if (['dashboard','reports','heatmap','streams','admin'].includes(hash)) showPage(hash);
+        else showPage('dashboard');
         drawHeatmap();
-    </script>
+        fetchRecent();
+    });
+</script>
 </body>
 </html>
