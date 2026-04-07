@@ -20,6 +20,8 @@ class DetectionRecord(Base):
     vehicle_type = Column(String, index=True)
     confidence = Column(Float)
     image_path = Column(String, nullable=True)
+    plate_text = Column(String, nullable=True)
+    plate_text = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     lane = Column(String, nullable=True)
 
