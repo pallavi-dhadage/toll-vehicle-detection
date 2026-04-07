@@ -193,22 +193,6 @@ Then open `http://localhost:5173`.
 | WebSocket | `/stream/ws/{camera_id}`     | Real‑time detection stream           |
 
 ---
-
-## 📸 Screenshots
-
-*(Add your own screenshots here)*
-
-- Dashboard  
-  ![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+Screenshot)
-
-- Live Streams with bounding boxes & stats  
-  ![Live Streams](https://via.placeholder.com/800x400?text=Live+Streams)
-
-- Heatmap  
-  ![Heatmap](https://via.placeholder.com/800x400?text=Heatmap)
-
----
-
 ## 🔮 Future Enhancements
 
 - **Automatic Number Plate Recognition (ALPR)** – already integrated.
