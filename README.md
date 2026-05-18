@@ -51,65 +51,19 @@ The Toll Plaza Vehicle Detection System is a production‑ready solution that au
 
 ```
 toll-vehicle-detection/
-├── backend/                          # FastAPI backend application
-│   ├── app/
-│   │   ├── main.py                   # FastAPI app entry point
-│   │   ├── core/                     # Core functionality & configuration
-│   │   │   ├── config.py             # Configuration management
-│   │   │   ├── database.py           # Database setup & session
-│   │   │   └── security.py           # JWT & password utilities
-│   │   ├── models/                   # SQLAlchemy ORM models
-│   │   │   ├── detection.py          # DetectionRecord model
-│   │   │   └── user.py               # User model
-│   │   ├── schemas/                  # Pydantic request/response validation
-│   │   │   ├── detection.py
-│   │   │   └── user.py
-│   │   ├── api/                      # API layer
-│   │   │   └── v1/
-│   │   │       ├── endpoints/        # API endpoint handlers
-│   │   │       │   ├── auth.py
-│   │   │       │   ├── detection.py
-│   │   │       │   ├── reports.py
-│   │   │       │   ├── heatmap.py
-│   │   │       │   └── streaming.py
-│   │   │       └── dependencies.py
-│   │   ├── services/                 # Business logic layer
-│   │   │   ├── auth.py
-│   │   │   ├── detection.py
-│   │   │   ├── tracking.py
-│   │   │   ├── report.py
-│   │   │   ├── heatmap.py
-│   │   │   ├── alerts.py
-│   │   │   └── streaming.py
-│   │   ├── ml/                       # Machine learning models
-│   │   │   ├── detector.py           # YOLOv8 wrapper
-│   │   │   ├── alpr.py               # License plate recognition
-│   │   │   └── tracker.py            # DeepSORT wrapper
-│   │   └── utils/                    # Utilities
-│   │       ├── logger.py
-│   │       └── helpers.py
-│   ├── requirements.txt
-│   └── .env.example
-
-├── frontend/                          # Frontend application
-│   ├── index.html
-│   └── package.json (for React)
-
-├── models/                            # Pre-trained ML models
-│   ├── yolov8m.pt
-│   ├── data.yaml
-│   ├── train_yolo.py
-│   └── test_detection.py
-
-├── datasets/                          # Training/testing datasets
-│   └── toll_vehicles/
-│       ├── images/
-│       └── labels/
-
-├── .env.example                       # Environment configuration
+├── app/
+│ └── main.py # FastAPI backend
+├── frontend/
+│ ├── professional_dashboard.html # Main dashboard
+│ └── index.html # Redirect
+├── models/
+│ └── yolov8n.pt # YOLO model
+├── .gitignore
+├── LICENSE
 ├── README.md
-└── LICENSE
-
+├── requirements.txt
+├── setup.sh
+└── run.sh
 ```
 
 ### Separation of Concerns
