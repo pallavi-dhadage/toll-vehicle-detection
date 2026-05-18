@@ -1,7 +1,6 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
 venv/
@@ -12,14 +11,11 @@ ENV/
 # Database
 *.db
 *.sqlite
-*.sqlite3
 *.sql
 
-# Models (keep only small ones)
+# Models (keep only yolov8n.pt)
 *.pt
-*.pth
-*.onnx
-!yolov8n.pt
+!models/yolov8n.pt
 
 # Backups
 *.tar
@@ -37,15 +33,11 @@ ENV/
 # Logs
 *.log
 logs/
-
-# OS
-.DS_Store
-Thumbs.db
+runs/
 
 # Uploads
 uploads/
 temp/
-runs/
 
 # Environment
 .env
@@ -55,12 +47,13 @@ runs/
 *.xlsx
 *.xls
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# OS
+.DS_Store
+Thumbs.db
 
-# Frontend node
-node_modules/
-dist/
-build/
+# Temporary files
+*.tmp
+*.temp
+test_*.jpg
+*.jpeg
+*.png
