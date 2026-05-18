@@ -1,8 +1,66 @@
-venv/
+# Python
 __pycache__/
-*.pyc
-.env
-models/yolov8m.pt
-backend/models/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Models (keep only small ones)
+*.pt
+*.pth
+*.onnx
+!yolov8n.pt
+
+# Backups
+*.tar
+*.gz
 *.zip
+*.bak
+*backup*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+temp/
+runs/
+
+# Environment
+.env
+.env.local
+
+# Reports
+*.xlsx
+*.xls
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Frontend node
+node_modules/
+dist/
+build/

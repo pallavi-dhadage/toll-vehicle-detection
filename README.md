@@ -4,61 +4,132 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com/)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-8.0.200-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-336791.svg)](https://www.postgresql.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38B2AC.svg)](https://tailwindcss.com/)
-[![Docker](https://img.shields.io/badge/Docker-20.10-2496ED.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Real‑time vehicle detection, multi‑camera streaming, and traffic analytics for toll plazas.**  
-Built with YOLOv8, FastAPI, PostgreSQL, React, and Docker.
+Built with YOLOv8, FastAPI, PostgreSQL, and React with clean separation of concerns.
 
 ---
 
 ## 📌 Overview
 
-Toll Plaza Vehicle Detection System is a production‑ready solution that automatically detects and classifies vehicles (cars, trucks, buses, motorcycles, bicycles) in real time. It supports multiple IP cameras (RTSP/HTTP), provides per‑camera cross‑section statistics, generates daily Excel reports, visualises traffic heatmaps, and sends real‑time alerts when vehicle volume exceeds a threshold. The system includes user authentication (JWT) and a modern dark/light dashboard.
+The Toll Plaza Vehicle Detection System is a production‑ready solution that automatically detects and classifies vehicles (cars, trucks, buses, motorcycles, bicycles) in real time. It supports multiple IP cameras (RTSP/HTTP), provides per‑camera cross‑section statistics, generates daily Excel reports, visualizes traffic heatmaps, and sends real‑time alerts when vehicle volume exceeds configured thresholds. The system features a clean, maintainable codebase with separation of concerns, JWT-based authentication, and a modern responsive dashboard.
 
 ---
 
 ## ✨ Key Features
 
-- **Vehicle Detection** – YOLOv8n (lightweight, fast) detects **car, truck, bus, motorcycle, bicycle**.
-- **Multi‑Object Tracking** – DeepSORT assigns unique IDs to each vehicle, preventing double‑counting and enabling accurate lane‑wise counts.
-- **Real‑Time Alerts** – Browser notifications when >3 vehicles of a type appear in 60 seconds (threshold configurable).
-- **Multi‑Camera Streaming** – Add any RTSP/HTTP camera; bounding boxes with track IDs overlay the video feed.
-- **Per‑Camera Cross‑Section Stats** – Running counts of each vehicle type (since last reset) displayed below each camera.
-- **Batch Image Upload** – Upload single, multiple, or ZIP images; progress bar and per‑file results.
-- **Live Webcam Capture** – Instant detection from your local camera.
-- **Daily Excel Reports** – Hourly breakdown + raw detection records.
-- **Hourly Heatmap** – Bar chart showing vehicle frequency per hour.
-- **Automatic License Plate Recognition (ALPR)** – PaddleOCR extracts plate numbers from vehicle regions.
-- **User Authentication** – JWT‑based signup/login, protected admin panel.
-- **Dark / Light Theme** – Modern UI with gradient buttons, glassmorphism, and smooth animations.
-- **Docker Support** – Run the whole stack with Docker Compose.
+- **Vehicle Detection** – YOLOv8 detects **car, truck, bus, motorcycle, bicycle** with high accuracy
+- **Multi‑Object Tracking** – DeepSORT assigns unique IDs to each vehicle, preventing double‑counting
+- **Real‑Time Alerts** – Browser notifications when vehicle count exceeds configurable threshold
+- **Multi‑Camera Streaming** – Support for multiple RTSP/HTTP camera feeds with live overlay detection
+- **Per‑Camera Statistics** – Real-time running counts of each vehicle type per camera
+- **Batch Image Upload** – Upload single, multiple, or ZIP archives with progress tracking
+- **Live Webcam Capture** – Instant detection from local camera feeds
+- **Daily Excel Reports** – Hourly breakdown and raw detection records
+- **Hourly Heatmap** – Visualization of vehicle frequency per hour
+- **Automatic License Plate Recognition (ALPR)** – PaddleOCR extracts plate numbers
+- **User Authentication** – JWT‑based signup/login with protected admin panel
+- **Dark/Light Theme** – Modern responsive UI with smooth animations
+- **Clean Architecture** – Well-organized code with separation of concerns
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Category       | Technologies                                                                 |
-|----------------|------------------------------------------------------------------------------|
-| **Backend**    | FastAPI, SQLAlchemy, PostgreSQL, PyTorch, YOLOv8, OpenCV, DeepSORT, PaddleOCR, JWT, WebSocket |
-| **Frontend**   | React (or static HTML/CSS/JS), Tailwind CSS, Chart.js, JSZip, Framer Motion |
-| **Infrastructure** | Docker, Docker Compose, Git, GitHub                                          |
-| **Languages**  | Python, JavaScript, HTML/CSS                                                |
+| Component      | Technology                                                                        |
+|----------------|-----------------------------------------------------------------------------------|
+| **Backend**    | FastAPI, SQLAlchemy, PostgreSQL, PyTorch, YOLOv8, OpenCV, DeepSORT, PaddleOCR   |
+| **Frontend**   | React, Tailwind CSS, Chart.js, JSZip, Framer Motion                             |
+| **ML/AI**      | YOLOv8 (Detection), DeepSORT (Tracking), PaddleOCR (ALPR)                        |
+| **Database**   | PostgreSQL or SQLite (development)                                               |
+| **Language**   | Python (Backend), JavaScript (Frontend)                                          |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Project Structure
 
-```text
-Camera Streams (RTSP/HTTP) → Backend (FastAPI) → YOLOv8 + DeepSORT → WebSocket → Frontend (React)
-                               ↑
-                               │
-User Uploads (images/zip) ────┘
-                               │
-PostgreSQL (detections, users) ←── SQLAlchemy
 ```
+toll-vehicle-detection/
+├── backend/                          # FastAPI backend application
+│   ├── app/
+│   │   ├── main.py                   # FastAPI app entry point
+│   │   ├── core/                     # Core functionality & configuration
+│   │   │   ├── config.py             # Configuration management
+│   │   │   ├── database.py           # Database setup & session
+│   │   │   └── security.py           # JWT & password utilities
+│   │   ├── models/                   # SQLAlchemy ORM models
+│   │   │   ├── detection.py          # DetectionRecord model
+│   │   │   └── user.py               # User model
+│   │   ├── schemas/                  # Pydantic request/response validation
+│   │   │   ├── detection.py
+│   │   │   └── user.py
+│   │   ├── api/                      # API layer
+│   │   │   └── v1/
+│   │   │       ├── endpoints/        # API endpoint handlers
+│   │   │       │   ├── auth.py
+│   │   │       │   ├── detection.py
+│   │   │       │   ├── reports.py
+│   │   │       │   ├── heatmap.py
+│   │   │       │   └── streaming.py
+│   │   │       └── dependencies.py
+│   │   ├── services/                 # Business logic layer
+│   │   │   ├── auth.py
+│   │   │   ├── detection.py
+│   │   │   ├── tracking.py
+│   │   │   ├── report.py
+│   │   │   ├── heatmap.py
+│   │   │   ├── alerts.py
+│   │   │   └── streaming.py
+│   │   ├── ml/                       # Machine learning models
+│   │   │   ├── detector.py           # YOLOv8 wrapper
+│   │   │   ├── alpr.py               # License plate recognition
+│   │   │   └── tracker.py            # DeepSORT wrapper
+│   │   └── utils/                    # Utilities
+│   │       ├── logger.py
+│   │       └── helpers.py
+│   ├── requirements.txt
+│   └── .env.example
+
+├── frontend/                          # Frontend application
+│   ├── index.html
+│   └── package.json (for React)
+
+├── models/                            # Pre-trained ML models
+│   ├── yolov8m.pt
+│   ├── data.yaml
+│   ├── train_yolo.py
+│   └── test_detection.py
+
+├── datasets/                          # Training/testing datasets
+│   └── toll_vehicles/
+│       ├── images/
+│       └── labels/
+
+├── .env.example                       # Environment configuration
+├── README.md
+└── LICENSE
+
+```
+
+### Separation of Concerns
+
+The backend is organized with clear layers:
+
+- **Core Layer** (`core/`) – Database, security, configuration
+- **Models Layer** (`models/`) – ORM model definitions  
+- **Schemas Layer** (`schemas/`) – Request/response validation
+- **API Layer** (`api/v1/endpoints/`) – HTTP endpoint handlers
+- **Services Layer** (`services/`) – Business logic & orchestration
+- **ML Layer** (`ml/`) – Machine learning model wrappers
+- **Utils Layer** (`utils/`) – Shared utilities
+
+This architecture enables:
+- ✅ Easy testing of individual components
+- ✅ Clear dependency flow
+- ✅ Service reusability across endpoints
+- ✅ Simple feature addition
+- ✅ Maintainability and scalability
 
 ---
 
@@ -71,70 +142,92 @@ PostgreSQL (detections, users) ←── SQLAlchemy
 - Node.js 20+ (for React frontend – optional)
 - Git
 
-### 1. Clone the repository
+### Step 1: Clone the Repository
 
 ```bash
 git clone https://github.com/pallavi-dhadage/toll-vehicle-detection.git
 cd toll-vehicle-detection
 ```
 
-### 2. Create virtual environment & install backend dependencies
+### Step 2: Create Virtual Environment
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 3. Download YOLOv8 model (lightweight)
-
-```bash
-mkdir -p backend/models
-cd backend/models
-wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt
-cd ../..
-```
-
-### 4. Start PostgreSQL database (Docker)
-
-```bash
-docker run -d --name toll_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=toll_vehicle_db -p 5432:5432 postgres:14
-```
-
-### 5. Configure environment
-
-Create `backend/.env`:
-
-```ini
-DATABASE_URL=postgresql://postgres:postgres@localhost/toll_vehicle_db
-```
-
-### 6. Run the backend
+### Step 3: Install Backend Dependencies
 
 ```bash
 cd backend
-source ../venv/bin/activate
-OMP_NUM_THREADS=1 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+pip install -r requirements.txt
+cd ..
 ```
 
-### 7. Run the static frontend (recommended for quick start)
+### Step 4: Configure Environment Variables
 
 ```bash
-cd ../frontend
+cp backend/.env.example backend/.env
+# Edit backend/.env with your configuration
+```
+
+Example `backend/.env`:
+```ini
+DATABASE_URL=sqlite:///./toll_vehicle.db
+# Or for PostgreSQL:
+# DATABASE_URL=postgresql://user:password@localhost/toll_vehicle_db
+
+SECRET_KEY=your-secret-key-change-in-production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+### Step 5: Download YOLOv8 Model
+
+The model will auto-download on first run:
+```bash
+cd models
+# wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt
+cd ..
+```
+
+### Step 6: Initialize Database
+
+```bash
+cd backend
+python3 -c "from app.core.database import init_db; init_db()"
+cd ..
+```
+
+### Step 7: Run the Backend
+
+```bash
+cd backend
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at:
+- Application: `http://localhost:8000`
+- Interactive docs: `http://localhost:8000/docs`
+
+### Step 8: Run the Frontend
+
+**Option A: Static Frontend (Quick Start)**
+
+```bash
+cd frontend
 python3 -m http.server 3001
 ```
 
-Then open `http://localhost:3001`.
+Open `http://localhost:3001`
 
-### 8. (Optional) Run the React frontend
+**Option B: React Frontend**
 
 ```bash
-cd ../frontend-react
+cd frontend
 npm install
 npm run dev
 ```
-
-Then open `http://localhost:5173`.
 
 ---
 
@@ -178,53 +271,105 @@ Then open `http://localhost:5173`.
 
 ## 📡 API Endpoints
 
-| Method | Endpoint                       | Description                          |
-|--------|--------------------------------|--------------------------------------|
-| POST   | `/detect/`                     | Upload an image → detection results  |
-| GET    | `/detect/records?limit=10`     | Get recent detections                |
-| GET    | `/reports/daily?date=YYYY-MM-DD` | Download Excel report               |
-| GET    | `/heatmap/?start=&end=`        | Get hourly counts for date range     |
-| POST   | `/auth/signup`                 | Register new user                    |
-| POST   | `/auth/token`                  | Login → returns JWT                  |
-| GET    | `/auth/me`                     | Get current user info (protected)    |
-| POST   | `/stream/add`                  | Add a camera (JSON: `camera_id, url, fps`) |
-| DELETE | `/stream/remove/{camera_id}`   | Remove a camera                      |
-| GET    | `/stream/list`                 | List all camera IDs                  |
-| WebSocket | `/stream/ws/{camera_id}`     | Real‑time detection stream           |
+All endpoints are under `/api/v1/` prefix.
+
+### Authentication
+- `POST /auth/signup` – Register new user
+- `POST /auth/token` – Login and get JWT token
+- `GET /auth/me` – Get current user (requires auth)
+
+### Detection
+- `POST /detect/` – Upload image for vehicle detection
+- `GET /detect/records?limit=10` – Get recent detections
+
+### Reports
+- `GET /reports/daily?date=2024-01-15` – Download daily Excel report
+
+### Heatmap
+- `GET /heatmap/?start=2024-01-15&end=2024-01-16` – Get hourly statistics
+
+### Streaming
+- `POST /stream/add` – Add camera stream
+- `DELETE /stream/remove/{camera_id}` – Remove camera
+- `GET /stream/list` – List active cameras
+- `WebSocket /stream/ws/{camera_id}` – Real-time video stream
 
 ---
-## 🔮 Future Enhancements
+## � Configuration
 
-- **Automatic Number Plate Recognition (ALPR)** – already integrated.
-- **Traffic Forecasting** – predict peak hours using historical data.
-- **Edge Deployment** – run detection on‑camera (NVIDIA Jetson).
-- **Mobile App** – React Native companion for field staff.
-- **Role‑Based Access Control** – operator, analyst, admin roles.
-- **Export to CSV/JSON** – additional data export formats.
+### Model Configuration
 
----
+Edit `backend/app/core/config.py`:
 
-## 🐳 Docker Deployment (Optional)
+```python
+# Detection thresholds
+DETECTION_CONFIDENCE_THRESHOLD = 0.5
+DETECTION_IOU_THRESHOLD = 0.5
+YOLO_CONFIDENCE_THRESHOLD = 0.3
 
-A `docker-compose.yml` is included to run the whole stack:
-
-```bash
-docker-compose up -d --build
+# Alert settings
+ALERT_VEHICLE_COUNT_THRESHOLD = 3
+ALERT_TIME_WINDOW_SECONDS = 60
 ```
 
-Access the frontend at `http://localhost`.
+---
+
+## 🤖 Machine Learning Models
+
+### YOLOv8 Detector
+- **Location**: `backend/app/ml/detector.py`
+- **Classes**: Car, Truck, Bus, Motorcycle, Bicycle
+
+### DeepSORT Tracker
+- **Location**: `backend/app/ml/tracker.py`
+- **Purpose**: Multi-object tracking with ID assignment
+
+### PaddleOCR (ALPR)
+- **Location**: `backend/app/ml/alpr.py`
+- **Purpose**: License plate text extraction
+
+---
+
+## 🔮 Future Enhancements
+
+- [ ] Real-time WebSocket updates
+- [ ] Traffic forecasting
+- [ ] Edge deployment (NVIDIA Jetson)
+- [ ] Mobile app (React Native)
+- [ ] Role-based access control
+- [ ] Advanced analytics
+- [ ] Multi-lane tracking
+- [ ] Custom model training interface
+
+---
+
+## 🔐 Security Considerations
+
+- ✅ JWT-based authentication
+- ✅ Password hashing with bcrypt
+- ✅ CORS configured
+- ⚠️ **TODO**: Change SECRET_KEY in production
+- ⚠️ **TODO**: Configure CORS origins
+- ⚠️ **TODO**: Use HTTPS in production
+- ⚠️ **TODO**: Implement rate limiting
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Push to branch
+5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-[MIT](LICENSE)
+MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
@@ -232,12 +377,16 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
 - [FastAPI](https://fastapi.tiangolo.com/)
+- [SQLAlchemy](https://www.sqlalchemy.org/)
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
+- [DeepSORT](https://github.com/nwojke/deep_sort)
+- [React](https://reactjs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Chart.js](https://www.chartjs.org/)
-- [JSZip](https://stuk.github.io/jszip/)
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
-- [Deep SORT](https://github.com/nwojke/deep_sort)
 
 ---
 
-**⭐ Star this repository if you find it useful!**
+**⭐ If you find this project useful, please consider giving it a star!**
+
+Last Updated: April 2026  
+Version: 2.0.0

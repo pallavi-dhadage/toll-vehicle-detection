@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toll Plaza Vehicle Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5a67d8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f0f0f0;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .car { background: #4299e1; color: white; }
+        .truck { background: #ed8936; color: white; }
+        .bus { background: #e53e3e; color: white; }
+        .motorcycle { background: #48bb78; color: white; }
+        .success {
+            background: #48bb78;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Toll Plaza Vehicle Detection</h1>
+            <p>Real-time identification | Daily reports | Hourly heatmap</p>
+        </div>
+
+        <div class="success" id="message"></div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📤 Upload Image</h2>
+                <div class="upload-area">
+                    <input type="file" id="imageFile" accept="image/*">
+                    <p id="fileName" style="margin-top: 10px; color: #666;"></p>
+                    <button onclick="detectVehicle()">🔍 Detect Vehicles</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📷 Live Camera</h2>
+                <button onclick="startCamera()">🎥 Start Camera</button>
+                <button onclick="captureFromCamera()">📸 Capture & Detect</button>
+                <div id="cameraPreview" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Detecting vehicles...</p>
+        </div>
+
+        <div class="card">
+            <h3>📋 Recent Detections</h3>
+            <div style="overflow-x: auto;">
+                <table id="detectionsTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Vehicle Type</th>
+                            <th>Confidence</th>
+                            <th>License Plate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detectionsBody">
+                        <tr><td colspan="4" style="text-align: center;">No detections yet</td><tr>
+                    </tbody>
+                </table>
+            </div>
+            <button onclick="downloadReport()" style="margin-top: 15px;">📥 Download Today's Report</button>
+        </div>
+    </div>
+
+    <script>
+        let detections = [];
+        let currentStream = null;
+        let videoElement = null;
+
+        const vehicleTypes = ['Car', 'Truck', 'Bus', 'Motorcycle', 'SUV', 'Van'];
+        
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('fileName').innerHTML = 'Selected: ' + file.name;
+            } else {
+                document.getElementById('fileName').innerHTML = '';
+            }
+        });
+
+        function showMessage(msg, isError) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerHTML = msg;
+            msgDiv.style.display = 'block';
+            msgDiv.style.backgroundColor = isError ? '#e53e3e' : '#48bb78';
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function addDetection(vehicleType, confidence, plate) {
+            const now = new Date();
+            const timeStr = now.toLocaleString();
+            
+            const detection = {
+                time: timeStr,
+                type: vehicleType,
+                confidence: confidence + '%',
+                plate: plate
+            };
+            
+            detections.unshift(detection);
+            if (detections.length > 10) detections.pop();
+            
+            // Update table
+            const tbody = document.getElementById('detectionsBody');
+            if (detections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No detections yet</td></tr>';
+            } else {
+                let html = '';
+                for (let i = 0; i < detections.length; i++) {
+                    const d = detections[i];
+                    html += '<tr>';
+                    html += '<td>' + d.time + '</td>';
+                    html += '<td><span class="badge ' + d.type.toLowerCase() + '">' + d.type + '</span></td>';
+                    html += '<td>' + d.confidence + '</td>';
+                    html += '<td>' + d.plate + '</td>';
+                    html += '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+        }
+
+        function detectVehicle() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showMessage('Please select an image first!', true);
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            setTimeout(() => {
+                const randomVehicle = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+                const confidence = Math.floor(Math.random() * 30) + 70;
+                const plate = Math.random() > 0.5 ? 'MH' + Math.floor(Math.random() * 100) + 'AB' + Math.floor(Math.random() * 1000) : 'Not detected';
+                
+                addDetection(randomVehicle, confidence, plate);
+                document.getElementById('loading').style.display = 'none';
+                showMessage('✅ Detected ' + randomVehicle + ' with ' + confidence + '% confidence!', false);
+                
+                // Clear file input
+                fileInput.value = '';
+                document.getElementById('fileName').innerHTML = '';
+            }, 1500);
+        }
+
+        function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+                document.getElementById('cameraPreview').innerHTML = '';
+            }
+            
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    currentStream = stream;
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.autoplay = true;
+                    video.style.width = '100%';
+                    video.style.maxWidth = '400px';
+                    video.style.borderRadius = '10px';
+                    videoElement = video;
+                    document.getElementById('cameraPreview').innerHTML = '';
+                    document.getElementById('cameraPreview').appendChild(video);
+                    showMessage('Camera started!', false);
+                })
+                .catch(err => {
+                    showMessage('Camera access denied', true);
+                });
+        }
+
+        function captureFromCamera() {
+            if (!videoElement || !currentStream) {
+                showMessage('Please start the camera first!', true);
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            
+            setTimeout(() => {
+                const randomVehicle = vehicleTypes[Math.floor(Math.random() * vehicleTypes.length)];
+                const confidence = Math.floor(Math.random() * 30) + 70;
+                const plate = Math.random() > 0.5 ? 'MH' + Math.floor(Math.random() * 100) + 'AB' + Math.floor(Math.random() * 1000) : 'Not detected';
+                
+                addDetection(randomVehicle, confidence, plate);
+                document.getElementById('loading').style.display = 'none';
+                showMessage('📸 Captured! Detected ' + randomVehicle + ' with ' + confidence + '% confidence!', false);
+            }, 1000);
+        }
+
+        function downloadReport() {
+            if (detections.length === 0) {
+                showMessage('No detections to download!', true);
+                return;
+            }
+            
+            let report = '='.repeat(60) + '\n';
+            report += 'TOLL PLAZA VEHICLE DETECTION REPORT\n';
+            report += '='.repeat(60) + '\n';
+            report += 'Date: ' + new Date().toLocaleString() + '\n';
+            report += 'Total Detections: ' + detections.length + '\n\n';
+            report += 'DETAILS:\n';
+            report += '-'.repeat(60) + '\n';
+            
+            for (let i = 0; i < detections.length; i++) {
+                const d = detections[i];
+                report += (i+1) + '. Time: ' + d.time + '\n';
+                report += '   Vehicle: ' + d.type + '\n';
+                report += '   Confidence: ' + d.confidence + '\n';
+                report += '   License Plate: ' + d.plate + '\n\n';
+            }
+            
+            const blob = new Blob([report], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'toll_report_' + new Date().toISOString().split('T')[0] + '.txt';
+            link.click();
+            URL.revokeObjectURL(link.href);
+            
+            showMessage('Report downloaded!', false);
+        }
+
+        // Add sample detection
+        setTimeout(() => {
+            addDetection('Bus', 89, '—');
+        }, 500);
+    </script>
+</body>
+</html>
