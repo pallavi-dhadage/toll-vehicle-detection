@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TollPlaza AI - Vehicle Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            transition: all 0.3s;
+        }
+        
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        
+        body.dark-mode .sidebar,
+        body.dark-mode .card,
+        body.dark-mode .navbar-top {
+            background: #1e1e2e;
+            color: #e0e0e0;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        
+        .sidebar.collapsed .nav-link span,
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+        
+        .sidebar .nav-link {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 10px;
+            color: #333;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            width: 25px;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .main-content.expanded {
+            margin-left: 70px;
+        }
+        
+        .navbar-top {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            background: white;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+        
+        .detection-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+            .sidebar .nav-link span {
+                display: none;
+            }
+            .main-content {
+                margin-left: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-notification" id="toastContainer"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="p-3 text-center">
+            <h4 class="logo-text"><i class="fas fa-car"></i> TollPlaza AI</h4>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#" onclick="showPage('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+            </a>
+            <a class="nav-link" href="#" onclick="showPage('reports')">
+                <i class="fas fa-file-alt"></i> <span>Reports</span>
+            </a>
+            <a class="nav-link" href="#" onclick="showPage('heatmap')">
+                <i class="fas fa-fire"></i> <span>Heatmap</span>
+            </a>
+            <a class="nav-link" href="#" onclick="showPage('livestreams')">
+                <i class="fas fa-video"></i> <span>Live Streams</span>
+            </a>
+            <a class="nav-link" href="#" onclick="showPage('admin')">
+                <i class="fas fa-crown"></i> <span>Admin Panel</span>
+            </a>
+        </nav>
+        <div class="position-absolute bottom-0 w-100 p-3">
+            <button class="btn btn-secondary w-100 mb-2" onclick="toggleSidebar()">
+                <i class="fas fa-chevron-left"></i> <span>Collapse</span>
+            </button>
+            <button class="btn btn-secondary w-100" onclick="toggleTheme()">
+                <i class="fas fa-moon"></i> <span>Dark/Light</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="navbar-top">
+            <h4 id="pageTitle">Dashboard</h4>
+            <div id="authStatus">
+                <button class="btn btn-primary" onclick="showLoginModal()">
+                    <i class="fas fa-sign-in-alt"></i> Login / Sign Up
+                </button>
+            </div>
+        </div>
+        
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-car fa-2x mb-2"></i>
+                        <div class="stat-number" id="totalVehicles">0</div>
+                        <p>Total Vehicles</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-car-side fa-2x mb-2"></i>
+                        <div class="stat-number" id="carCount">0</div>
+                        <p>Cars</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-truck fa-2x mb-2"></i>
+                        <div class="stat-number" id="truckCount">0</div>
+                        <p>Trucks</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <i class="fas fa-bus fa-2x mb-2"></i>
+                        <div class="stat-number" id="busCount">0</div>
+                        <p>Buses</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-upload"></i> Upload Images / ZIP</h5>
+                        <input type="file" id="imageUpload" class="form-control mb-3" accept="image/*">
+                        <button class="btn btn-primary w-100" onclick="detectVehicles()">
+                            <i class="fas fa-search"></i> Detect Vehicles
+                        </button>
+                        <div id="detectionResult" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-video"></i> Live Camera</h5>
+                        <video id="liveCamera" autoplay playsinline style="width:100%; border-radius:10px; background:#000;"></video>
+                        <button class="btn btn-success mt-2 w-100" onclick="startCamera()">
+                            <i class="fas fa-play"></i> Capture & Detect
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card p-3">
+                <h5><i class="fas fa-history"></i> Recent Detections</h5>
+                <div id="recentDetections" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-muted text-center">No detections yet</p>
+                </div>
+                <button class="btn btn-info mt-2" onclick="downloadTodayReport()">
+                    <i class="fas fa-download"></i> Download Today's Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Reports Page -->
+        <div id="page-reports" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-file-excel"></i> Daily Reports</h5>
+                <p>Download Excel reports for any date.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Select Date</label>
+                        <input type="date" id="reportDate" class="form-control" value="2026-05-19">
+                    </div>
+                    <div class="col-md-6">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="downloadCustomReport()">
+                            <i class="fas fa-download"></i> Download Report
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <button class="btn btn-success btn-lg w-100" onclick="downloadTodayReport()">
+                    <i class="fas fa-file-excel"></i> Quick Access: Download Today's Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Heatmap Page -->
+        <div id="page-heatmap" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-chart-line"></i> Hourly Vehicle Frequency (Heatmap)</h5>
+                <canvas id="heatmapChart" width="800" height="400"></canvas>
+                <p class="text-muted text-center mt-3">Data for current month | Hour of Day</p>
+            </div>
+        </div>
+        
+        <!-- Live Streams Page -->
+        <div id="page-livestreams" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-video"></i> Live Camera Streams</h5>
+                <button class="btn btn-primary mb-3" onclick="showAddCameraModal()">
+                    <i class="fas fa-plus"></i> Add a new camera
+                </button>
+                <div id="camerasList" class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-camera fa-3x mb-2"></i>
+                                <h6>Camera 1 - Main Gate</h6>
+                                <p class="small">Status: Active</p>
+                                <button class="btn btn-sm btn-info" onclick="configureCamera('camera1')">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-camera fa-3x mb-2"></i>
+                                <h6>Camera 2 - Exit Gate</h6>
+                                <p class="small">Status: Active</p>
+                                <button class="btn btn-sm btn-info" onclick="configureCamera('camera2')">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Page -->
+        <div id="page-admin" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-lock"></i> Admin Login</h5>
+                <div id="adminContent">
+                    <div class="text-center">
+                        <p>Please login to access admin panel</p>
+                        <button class="btn btn-primary" onclick="showLoginModal()">Login</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-sign-in-alt"></i> Admin Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="form-control mb-3" placeholder="admin@example.com">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" class="form-control mb-3" placeholder="••••••">
+                    <div class="alert alert-info">
+                        <small>Demo: admin@example.com / admin123</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="login()">Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Camera Modal -->
+    <div class="modal fade" id="addCameraModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Camera</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Camera ID (unique)</label>
+                    <input type="text" id="cameraId" class="form-control mb-3" placeholder="camera_3">
+                    <label>RTSP/HTTP URL</label>
+                    <input type="text" id="cameraUrl" class="form-control mb-3" placeholder="rtsp://ip:port/stream">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="addCamera()">Add Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentUser = null;
+        let currentPage = 'dashboard';
+        let videoStream = null;
+        let heatmapChart = null;
+        
+        // Page Navigation
+        function showPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            document.getElementById('pageTitle').innerText = page.charAt(0).toUpperCase() + page.slice(1);
+            
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            event.target.closest('.nav-link').classList.add('active');
+            
+            if (page === 'heatmap') {
+                loadHeatmap();
+            }
+            if (page === 'admin' && currentUser) {
+                loadAdminPanel();
+            }
+        }
+        
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('expanded');
+        }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const id = 'toast_' + Date.now();
+            const bg = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#667eea';
+            const html = `
+                <div id="${id}" style="background: ${bg}; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; animation: slideIn 0.3s;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            setTimeout(() => document.getElementById(id)?.remove(), 3000);
+        }
+        
+        // API Calls
+        async function fetchStats() {
+            try {
+                const res = await fetch('http://localhost:8000/stats/camera1');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('totalVehicles').innerText = data.total || 0;
+                    document.getElementById('carCount').innerText = data.counters.car || 0;
+                    document.getElementById('truckCount').innerText = data.counters.truck || 0;
+                    document.getElementById('busCount').innerText = data.counters.bus || 0;
+                }
+            } catch(e) { console.log('API not ready'); }
+        }
+        
+        async function detectVehicles() {
+            const file = document.getElementById('imageUpload').files[0];
+            if (!file) { showToast('Please select an image', 'error'); return; }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showToast('Processing image...', 'info');
+            
+            try {
+                const res = await fetch('http://localhost:8000/detect', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.success) {
+                    let html = `<div class="alert alert-success">✅ Found ${data.count} vehicles!</div>`;
+                    data.detections.forEach(d => {
+                        html += `<div class="detection-item"><span>${d.type}</span><span>${Math.round(d.confidence*100)}%</span></div>`;
+                    });
+                    document.getElementById('detectionResult').innerHTML = html;
+                    showToast(`Detected ${data.count} vehicles!`);
+                    fetchStats();
+                }
+            } catch(e) {
+                showToast('Detection failed', 'error');
+            }
+        }
+        
+        async function startCamera() {
+            const video = document.getElementById('liveCamera');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoStream = stream;
+                video.srcObject = stream;
+                showToast('Camera started! Click Capture to detect vehicles', 'success');
+            } catch(e) {
+                showToast('Unable to access camera', 'error');
+            }
+        }
+        
+        async function downloadTodayReport() {
+            window.open('http://localhost:8000/generate-report', '_blank');
+            showToast('Downloading report...');
+        }
+        
+        async function downloadCustomReport() {
+            window.open('http://localhost:8000/generate-report', '_blank');
+            showToast('Generating report...');
+        }
+        
+        async function resetCounters() {
+            await fetch('http://localhost:8000/reset/camera1');
+            fetchStats();
+            showToast('Counters reset!');
+        }
+        
+        function loadHeatmap() {
+            const ctx = document.getElementById('heatmapChart').getContext('2d');
+            if (heatmapChart) heatmapChart.destroy();
+            heatmapChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Vehicle Count',
+                        data: Array.from({length: 24}, () => Math.floor(Math.random() * 100)),
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: '#667eea',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+        }
+        
+        function showAddCameraModal() {
+            new bootstrap.Modal(document.getElementById('addCameraModal')).show();
+        }
+        
+        async function addCamera() {
+            const id = document.getElementById('cameraId').value;
+            const url = document.getElementById('cameraUrl').value;
+            if (!id || !url) { showToast('Please fill all fields', 'error'); return; }
+            showToast(`Camera ${id} added!`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addCameraModal')).hide();
+        }
+        
+        function configureCamera(cameraId) {
+            showToast(`Configuring ${cameraId}...`, 'info');
+        }
+        
+        function showLoginModal() {
+            new bootstrap.Modal(document.getElementById('loginModal')).show();
+        }
+        
+        async function login() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (email === 'admin@example.com' && password === 'admin123') {
+                currentUser = { email, role: 'admin' };
+                document.getElementById('authStatus').innerHTML = `
+                    <div class="dropdown">
+                        <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> ${email}
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        </ul>
+                    </div>
+                `;
+                bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+                showToast('Login successful!', 'success');
+                loadAdminPanel();
+            } else {
+                showToast('Invalid credentials', 'error');
+            }
+        }
+        
+        function logout() {
+            currentUser = null;
+            document.getElementById('authStatus').innerHTML = `
+                <button class="btn btn-primary" onclick="showLoginModal()">
+                    <i class="fas fa-sign-in-alt"></i> Login / Sign Up
+                </button>
+            `;
+            showToast('Logged out');
+        }
+        
+        function loadAdminPanel() {
+            if (currentUser) {
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-user-check"></i> Welcome, ${currentUser.email}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card p-3">
+                                <h6>System Stats</h6>
+                                <p>Total Vehicles: <strong id="adminTotal">0</strong></p>
+                                <button class="btn btn-danger" onclick="resetCounters()">Reset All Data</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                fetchStats();
+                setTimeout(() => {
+                    document.getElementById('adminTotal').innerText = document.getElementById('totalVehicles').innerText;
+                }, 1000);
+            }
+        }
+        
+        // Initialize
+        fetchStats();
+        setInterval(fetchStats, 10000);
+        loadHeatmap();
+        
+        // Expose functions globally
+        window.showPage = showPage;
+        window.toggleSidebar = toggleSidebar;
+        window.toggleTheme = toggleTheme;
+        window.detectVehicles = detectVehicles;
+        window.startCamera = startCamera;
+        window.downloadTodayReport = downloadTodayReport;
+        window.downloadCustomReport = downloadCustomReport;
+        window.resetCounters = resetCounters;
+        window.showAddCameraModal = showAddCameraModal;
+        window.addCamera = addCamera;
+        window.configureCamera = configureCamera;
+        window.showLoginModal = showLoginModal;
+        window.login = login;
+        window.logout = logout;
+    </script>
+</body>
+</html>

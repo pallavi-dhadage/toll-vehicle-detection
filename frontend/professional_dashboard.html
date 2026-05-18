@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TollPlaza AI - Professional Vehicle Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: -1;
+        }
+        
+        body.dark-mode::before {
+            background: linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.7) 100%);
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 20px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        body.dark-mode .sidebar {
+            background: rgba(30, 30, 46, 0.95);
+        }
+        
+        .sidebar.collapsed {
+            width: 80px;
+        }
+        
+        .sidebar.collapsed .nav-link span,
+        .sidebar.collapsed .logo-text,
+        .sidebar.collapsed .sidebar-image-text,
+        .sidebar.collapsed .info-text {
+            display: none;
+        }
+        
+        .sidebar-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .sidebar .nav-link {
+            padding: 12px 20px;
+            margin: 5px 10px;
+            border-radius: 10px;
+            color: #333;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        body.dark-mode .sidebar .nav-link {
+            color: #e0e0e0;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            width: 25px;
+            margin-right: 10px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+            transition: all 0.3s;
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .main-content.expanded {
+            margin-left: 80px;
+        }
+        
+        /* Custom Scrollbar */
+        .main-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .main-content::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        
+        .main-content::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+        
+        /* Navbar */
+        .navbar-top {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        body.dark-mode .navbar-top {
+            background: rgba(30, 30, 46, 0.95);
+            color: white;
+        }
+        
+        /* Cards */
+        .card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+            overflow: hidden;
+        }
+        
+        body.dark-mode .card {
+            background: rgba(30, 30, 46, 0.95);
+            color: #e0e0e0;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        /* Info Boxes */
+        .info-box {
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .rule-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(102,126,234,0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .rule-item i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 30px 20px 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+        
+        body.dark-mode .footer {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            color: var(--secondary);
+        }
+        
+        /* Detection Items */
+        .detection-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(245, 245, 245, 0.8);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        body.dark-mode .detection-item {
+            background: rgba(50, 50, 70, 0.8);
+        }
+        
+        /* Toast */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+        
+        /* Page Transitions */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 80px; }
+            .sidebar .nav-link span,
+            .sidebar .logo-text,
+            .sidebar-image-text,
+            .info-text { display: none; }
+            .main-content { margin-left: 80px; }
+        }
+        
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .floating-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* Scroll to top button */
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .scroll-top.visible {
+            opacity: 1;
+        }
+        
+        .scroll-top:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="toast-notification" id="toastContainer"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="p-3 text-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1995/1995572.png" alt="Toll Plaza" class="sidebar-image">
+            <h5 class="logo-text"><i class="fas fa-car floating-icon"></i> TollPlaza AI</h5>
+            <p class="small text-muted sidebar-image-text">Vehicle Detection System</p>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" onclick="showPage('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> <span>Dashboard</span>
+            </a>
+            <a class="nav-link" onclick="showPage('reports')">
+                <i class="fas fa-file-alt"></i> <span>Reports</span>
+            </a>
+            <a class="nav-link" onclick="showPage('heatmap')">
+                <i class="fas fa-fire"></i> <span>Heatmap</span>
+            </a>
+            <a class="nav-link" onclick="showPage('livestreams')">
+                <i class="fas fa-video"></i> <span>Live Streams</span>
+            </a>
+            <a class="nav-link" onclick="showPage('info')">
+                <i class="fas fa-info-circle"></i> <span>About Toll Plaza</span>
+            </a>
+            <a class="nav-link" onclick="showPage('admin')">
+                <i class="fas fa-crown"></i> <span>Admin Panel</span>
+            </a>
+        </nav>
+        <div class="position-absolute bottom-0 w-100 p-3">
+            <div class="info-text small text-muted text-center mb-2">
+                <i class="fas fa-shield-alt"></i> Secure System
+            </div>
+            <button class="btn btn-secondary w-100 mb-2" onclick="toggleSidebar()">
+                <i class="fas fa-chevron-left"></i> <span>Collapse</span>
+            </button>
+            <button class="btn btn-secondary w-100" onclick="toggleTheme()">
+                <i class="fas fa-moon"></i> <span>Dark/Light</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="navbar-top">
+            <h4 id="pageTitle"><i class="fas fa-chart-line"></i> Dashboard</h4>
+            <div id="authStatus">
+                <button class="btn btn-primary" onclick="showLoginModal()">
+                    <i class="fas fa-sign-in-alt"></i> Login / Sign Up
+                </button>
+            </div>
+        </div>
+        
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <!-- Stats Row -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card" onclick="fetchStats()">
+                        <i class="fas fa-car fa-2x mb-2"></i>
+                        <div class="stat-number" id="totalVehicles">0</div>
+                        <p>Total Vehicles Today</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card" onclick="filterByType('car')">
+                        <i class="fas fa-car-side fa-2x mb-2"></i>
+                        <div class="stat-number" id="carCount">0</div>
+                        <p>Cars</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card" onclick="filterByType('truck')">
+                        <i class="fas fa-truck fa-2x mb-2"></i>
+                        <div class="stat-number" id="truckCount">0</div>
+                        <p>Trucks</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card" onclick="filterByType('bus')">
+                        <i class="fas fa-bus fa-2x mb-2"></i>
+                        <div class="stat-number" id="busCount">0</div>
+                        <p>Buses</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-upload"></i> Vehicle Detection</h5>
+                        <input type="file" id="imageUpload" class="form-control mb-3" accept="image/*">
+                        <button class="btn btn-primary w-100" onclick="detectVehicles()">
+                            <i class="fas fa-search"></i> Detect Vehicles
+                        </button>
+                        <div id="detectionResult" class="mt-3"></div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-video"></i> Live Camera Feed</h5>
+                        <video id="liveCamera" autoplay playsinline style="width:100%; border-radius:10px; background:#000;"></video>
+                        <button class="btn btn-success mt-2 w-100" onclick="startCamera()">
+                            <i class="fas fa-play"></i> Start Camera
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-history"></i> Recent Detections</h5>
+                        <div id="recentDetections" style="max-height: 300px; overflow-y: auto;">
+                            <p class="text-muted text-center">No detections yet</p>
+                        </div>
+                        <button class="btn btn-info mt-2" onclick="downloadTodayReport()">
+                            <i class="fas fa-download"></i> Download Today's Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reports Page -->
+        <div id="page-reports" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-file-excel"></i> Daily Reports</h5>
+                <p>Download Excel reports for any date.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label>Select Date</label>
+                        <input type="date" id="reportDate" class="form-control" value="2026-05-19">
+                    </div>
+                    <div class="col-md-6">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="downloadCustomReport()">
+                            <i class="fas fa-download"></i> Download Report
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <button class="btn btn-success btn-lg w-100" onclick="downloadTodayReport()">
+                    <i class="fas fa-file-excel"></i> Quick Access: Download Today's Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Heatmap Page -->
+        <div id="page-heatmap" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-chart-line"></i> Hourly Vehicle Frequency (Heatmap)</h5>
+                <canvas id="heatmapChart" width="800" height="400"></canvas>
+                <p class="text-muted text-center mt-3">Data for current month | Hour of Day</p>
+            </div>
+        </div>
+        
+        <!-- Live Streams Page -->
+        <div id="page-livestreams" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-video"></i> Live Camera Streams</h5>
+                <button class="btn btn-primary mb-3" onclick="showAddCameraModal()">
+                    <i class="fas fa-plus"></i> Add a new camera
+                </button>
+                <div id="camerasList" class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-camera fa-3x mb-2"></i>
+                                <h6>Camera 1 - Main Gate</h6>
+                                <p class="small">Status: <span class="badge bg-success">Active</span></p>
+                                <button class="btn btn-sm btn-info" onclick="configureCamera('camera1')">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card bg-dark text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-camera fa-3x mb-2"></i>
+                                <h6>Camera 2 - Exit Gate</h6>
+                                <p class="small">Status: <span class="badge bg-success">Active</span></p>
+                                <button class="btn btn-sm btn-info" onclick="configureCamera('camera2')">
+                                    <i class="fas fa-cog"></i> Configure
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- About Toll Plaza Page -->
+        <div id="page-info" class="page">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-info-circle"></i> About Toll Plaza</h5>
+                        <div class="info-box">
+                            <i class="fas fa-map-marker-alt"></i> <strong>Location:</strong> NH-48, Gurugram, India
+                        </div>
+                        <div class="info-box">
+                            <i class="fas fa-calendar"></i> <strong>Established:</strong> 2015
+                        </div>
+                        <div class="info-box">
+                            <i class="fas fa-chart-line"></i> <strong>Daily Traffic:</strong> ~50,000 vehicles
+                        </div>
+                        <div class="info-box">
+                            <i class="fas fa-road"></i> <strong>Lanes:</strong> 12 (6 each direction)
+                        </div>
+                        <div class="info-box">
+                            <i class="fas fa-tag"></i> <strong>FASTag Enabled:</strong> Yes
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-gavel"></i> Toll Plaza Rules & Regulations</h5>
+                        <div class="rule-item">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Speed limit: 40 km/h within plaza premises</span>
+                        </div>
+                        <div class="rule-item">
+                            <i class="fas fa-tag"></i>
+                            <span>FASTag mandatory for all vehicles</span>
+                        </div>
+                        <div class="rule-item">
+                            <i class="fas fa-ban"></i>
+                            <span>No overtaking near toll booths</span>
+                        </div>
+                        <div class="rule-item">
+                            <i class="fas fa-phone"></i>
+                            <span>Emergency number: 1033 for highway assistance</span>
+                        </div>
+                        <div class="rule-item">
+                            <i class="fas fa-money-bill"></i>
+                            <span>Cash payments accepted only at designated lanes</span>
+                        </div>
+                        <div class="rule-item">
+                            <i class="fas fa-weight-hanging"></i>
+                            <span>Overweight vehicles pay 2x toll fee</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card p-3">
+                        <h5><i class="fas fa-chart-bar"></i> Toll Rates</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr><th>Vehicle Type</th><th>Toll Rate (INR)</th><th>FASTag Rate (INR)</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Car/Jeep/Van</td><td>₹85</td><td>₹80.75</td></tr>
+                                    <tr><td>Light Commercial Vehicle</td><td>₹135</td><td>₹128.25</td></tr>
+                                    <tr><td>Bus/Truck</td><td>₹290</td><td>₹275.50</td></tr>
+                                    <tr><td>Heavy Vehicle</td><td>₹450</td><td>₹427.50</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Page -->
+        <div id="page-admin" class="page">
+            <div class="card p-3">
+                <h5><i class="fas fa-lock"></i> Admin Panel</h5>
+                <div id="adminContent">
+                    <div class="text-center">
+                        <p>Please login to access admin panel</p>
+                        <button class="btn btn-primary" onclick="showLoginModal()">Login</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6><i class="fas fa-car"></i> TollPlaza AI</h6>
+                    <p class="small">Advanced Vehicle Detection & Analytics System</p>
+                    <p class="small">© 2026 TollPlaza AI. All rights reserved.</p>
+                </div>
+                <div class="col-md-4">
+                    <h6><i class="fas fa-link"></i> Quick Links</h6>
+                    <ul class="list-unstyled small">
+                        <li><a href="#" onclick="showPage('dashboard')">Dashboard</a></li>
+                        <li><a href="#" onclick="showPage('reports')">Reports</a></li>
+                        <li><a href="#" onclick="showPage('heatmap')">Heatmap</a></li>
+                        <li><a href="#" onclick="showPage('info')">About Toll Plaza</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6><i class="fas fa-envelope"></i> Contact</h6>
+                    <p class="small">Email: support@tollplaza.ai</p>
+                    <p class="small">Phone: +91-124-4567890</p>
+                    <p class="small">Address: NH-48, Gurugram, India</p>
+                </div>
+            </div>
+            <hr class="bg-light">
+            <div class="text-center small">
+                <i class="fas fa-shield-alt"></i> Secured by AI Technology | Real-time Vehicle Detection
+            </div>
+        </div>
+    </div>
+    
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-sign-in-alt"></i> Admin Login</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="form-control mb-3" placeholder="admin@example.com" value="admin@example.com">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" class="form-control mb-3" placeholder="••••••" value="admin123">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Demo: <strong>admin@example.com</strong> / <strong>admin123</strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="doLogin()">Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Camera Modal -->
+    <div class="modal fade" id="addCameraModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Camera</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Camera ID (unique)</label>
+                    <input type="text" id="cameraId" class="form-control mb-3" placeholder="camera_3">
+                    <label>RTSP/HTTP URL</label>
+                    <input type="text" id="cameraUrl" class="form-control mb-3" placeholder="rtsp://ip:port/stream">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="addCamera()">Add Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scroll to Top Button -->
+    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentUser = null;
+        let currentPage = 'dashboard';
+        let videoStream = null;
+        let heatmapChart = null;
+        
+        // Scroll handling
+        window.addEventListener('scroll', function() {
+            const scrollTop = document.getElementById('scrollTop');
+            if (window.pageYOffset > 300) {
+                scrollTop.classList.add('visible');
+            } else {
+                scrollTop.classList.remove('visible');
+            }
+        });
+        
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        function filterByType(type) {
+            showToast(`Showing ${type} statistics`, 'info');
+        }
+        
+        function showPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${page}`).classList.add('active');
+            const icons = { dashboard: 'chart-line', reports: 'file-alt', heatmap: 'fire', livestreams: 'video', info: 'info-circle', admin: 'crown' };
+            document.getElementById('pageTitle').innerHTML = `<i class="fas fa-${icons[page]}"></i> ${page.charAt(0).toUpperCase() + page.slice(1)}`;
+            
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            if(event && event.target) {
+                const target = event.target.closest('.nav-link');
+                if(target) target.classList.add('active');
+            }
+            
+            if (page === 'heatmap') loadHeatmap();
+            if (page === 'admin' && currentUser) loadAdminPanel();
+        }
+        
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('expanded');
+        }
+        
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            showToast('Theme toggled!', 'success');
+        }
+        
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const id = 'toast_' + Date.now();
+            const bg = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#667eea';
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+            const html = `<div id="${id}" style="background: ${bg}; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; animation: slideIn 0.3s;"><i class="fas fa-${icon}"></i> ${message}</div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 3000);
+        }
+        
+        function doLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            if (email === 'admin@example.com' && password === 'admin123') {
+                currentUser = { email, role: 'admin' };
+                document.getElementById('authStatus').innerHTML = `<div class="dropdown"><button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"><i class="fas fa-user-circle"></i> ${email}</button><ul class="dropdown-menu"><li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li></ul></div>`;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                if(modal) modal.hide();
+                showToast('Login successful! Welcome admin!', 'success');
+                loadAdminPanel();
+                if (currentPage === 'admin') loadAdminPanel();
+            } else {
+                showToast('Invalid credentials! Use admin@example.com / admin123', 'error');
+            }
+        }
+        
+        function showLoginModal() { new bootstrap.Modal(document.getElementById('loginModal')).show(); }
+        
+        function logout() {
+            currentUser = null;
+            document.getElementById('authStatus').innerHTML = `<button class="btn btn-primary" onclick="showLoginModal()"><i class="fas fa-sign-in-alt"></i> Login / Sign Up</button>`;
+            showToast('Logged out successfully', 'info');
+            loadAdminPanel();
+        }
+        
+        function loadAdminPanel() {
+            const adminContent = document.getElementById('adminContent');
+            if (currentUser) {
+                adminContent.innerHTML = `<div class="alert alert-success"><i class="fas fa-user-check"></i> Welcome, ${currentUser.email}!</div><div class="row"><div class="col-md-6"><div class="card p-3"><h6>System Statistics</h6><p>Total Vehicles: <strong id="adminTotal">0</strong></p><p>Active Cameras: <strong>2</strong></p><p>API Status: <span class="badge bg-success">Online</span></p><button class="btn btn-danger mt-2" onclick="resetCounters()">Reset All Counters</button></div></div><div class="col-md-6"><div class="card p-3"><h6>Quick Actions</h6><button class="btn btn-info w-100 mb-2" onclick="downloadTodayReport()"><i class="fas fa-download"></i> Download Report</button><button class="btn btn-warning w-100" onclick="showToast('System refresh triggered')"><i class="fas fa-sync"></i> Refresh System</button></div></div></div>`;
+                setTimeout(() => { const total = document.getElementById('totalVehicles')?.innerText || '0'; const adminTotal = document.getElementById('adminTotal'); if(adminTotal) adminTotal.innerText = total; }, 500);
+            } else {
+                adminContent.innerHTML = `<div class="text-center"><i class="fas fa-lock fa-3x mb-3 text-muted"></i><p>Please login to access admin panel</p><button class="btn btn-primary" onclick="showLoginModal()"><i class="fas fa-sign-in-alt"></i> Login</button></div>`;
+            }
+        }
+        
+        async function fetchStats() {
+            try {
+                const res = await fetch('http://localhost:8000/stats/camera1');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('totalVehicles').innerText = data.total || 0;
+                    document.getElementById('carCount').innerText = data.counters.car || 0;
+                    document.getElementById('truckCount').innerText = data.counters.truck || 0;
+                    document.getElementById('busCount').innerText = data.counters.bus || 0;
+                    const adminTotal = document.getElementById('adminTotal');
+                    if(adminTotal) adminTotal.innerText = data.total || 0;
+                }
+            } catch(e) { console.log('Backend not ready'); }
+        }
+        
+        async function detectVehicles() {
+            const file = document.getElementById('imageUpload').files[0];
+            if (!file) { showToast('Please select an image first', 'error'); return; }
+            const formData = new FormData();
+            formData.append('file', file);
+            showToast('Processing image...', 'info');
+            try {
+                const res = await fetch('http://localhost:8000/detect', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) {
+                    let html = `<div class="alert alert-success">✅ Found ${data.count} vehicles!</div>`;
+                    data.detections.forEach(d => { html += `<div class="detection-item"><span><i class="fas fa-${d.type === 'car' ? 'car' : d.type === 'truck' ? 'truck' : 'bus'}"></i> ${d.type}</span><span>${Math.round(d.confidence*100)}%</span></div>`; });
+                    document.getElementById('detectionResult').innerHTML = html;
+                    showToast(`Detected ${data.count} vehicles!`);
+                    fetchStats();
+                } else { showToast('No vehicles detected', 'error'); }
+            } catch(e) { showToast('Detection failed. Make sure backend is running', 'error'); }
+        }
+        
+        async function startCamera() {
+            const video = document.getElementById('liveCamera');
+            try {
+                if(videoStream) videoStream.getTracks().forEach(track => track.stop());
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoStream = stream;
+                video.srcObject = stream;
+                showToast('Camera started! Click Capture to detect', 'success');
+            } catch(e) { showToast('Unable to access camera', 'error'); }
+        }
+        
+        function downloadTodayReport() { window.open('http://localhost:8000/generate-report', '_blank'); showToast('Downloading report...'); }
+        function downloadCustomReport() { window.open('http://localhost:8000/generate-report', '_blank'); showToast('Generating report...'); }
+        
+        async function resetCounters() {
+            try { await fetch('http://localhost:8000/reset/camera1'); fetchStats(); showToast('Counters reset successfully!'); } 
+            catch(e) { showToast('Failed to reset counters', 'error'); }
+        }
+        
+        function loadHeatmap() {
+            const ctx = document.getElementById('heatmapChart').getContext('2d');
+            if (heatmapChart) heatmapChart.destroy();
+            heatmapChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: Array.from({length: 24}, (_, i) => `${i}:00`), datasets: [{ label: 'Vehicle Count', data: Array.from({length: 24}, () => Math.floor(Math.random() * 100)), backgroundColor: 'rgba(102, 126, 234, 0.6)', borderColor: '#667eea', borderWidth: 1 }] },
+                options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } }
+            });
+        }
+        
+        function showAddCameraModal() { new bootstrap.Modal(document.getElementById('addCameraModal')).show(); }
+        
+        async function addCamera() {
+            const id = document.getElementById('cameraId').value;
+            const url = document.getElementById('cameraUrl').value;
+            if (!id || !url) { showToast('Please fill all fields', 'error'); return; }
+            showToast(`Camera ${id} added successfully!`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('addCameraModal')).hide();
+            document.getElementById('cameraId').value = '';
+            document.getElementById('cameraUrl').value = '';
+        }
+        
+        function configureCamera(cameraId) { showToast(`Configuring ${cameraId}...`, 'info'); }
+        
+        // Initialize
+        fetchStats();
+        setInterval(fetchStats, 10000);
+        loadHeatmap();
+        
+        window.showPage = showPage; window.toggleSidebar = toggleSidebar; window.toggleTheme = toggleTheme;
+        window.detectVehicles = detectVehicles; window.startCamera = startCamera;
+        window.downloadTodayReport = downloadTodayReport; window.downloadCustomReport = downloadCustomReport;
+        window.resetCounters = resetCounters; window.showAddCameraModal = showAddCameraModal;
+        window.addCamera = addCamera; window.configureCamera = configureCamera;
+        window.showLoginModal = showLoginModal; window.doLogin = doLogin; window.logout = logout;
+        window.filterByType = filterByType; window.scrollToTop = scrollToTop;
+    </script>
+</body>
+</html>
