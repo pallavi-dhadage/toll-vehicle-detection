@@ -57,3 +57,5 @@ Thumbs.db
 test_*.jpg
 *.jpeg
 *.png
+bus.jpg
+dataset/
