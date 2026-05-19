@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TollPlaza AI - Multi-Angle Vehicle Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 260px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 20px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .card {
+            border-radius: 15px;
+            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .angle-card {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .angle-card.active {
+            border: 3px solid #667eea;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+        }
+        
+        .camera-feed {
+            background: #000;
+            border-radius: 10px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .camera-placeholder {
+            text-align: center;
+            color: #fff;
+        }
+        
+        .detection-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .live-badge {
+            animation: pulse 1s infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .main-content { margin-left: 70px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar p-3">
+        <div class="text-center mb-4">
+            <i class="fas fa-video fa-3x" style="color: #667eea;"></i>
+            <h5 class="mt-2">Multi-Angle View</h5>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link text-dark" href="/professional_dashboard.html">
+                <i class="fas fa-home"></i> Main Dashboard
+            </a>
+            <a class="nav-link active text-dark" href="#">
+                <i class="fas fa-layer-group"></i> Multi-Angle
+            </a>
+            <a class="nav-link text-dark" href="#" onclick="showConfigModal()">
+                <i class="fas fa-cog"></i> Configure Angles
+            </a>
+        </nav>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="fas fa-layer-group"></i> Multi-Angle Vehicle Detection
+            </h2>
+            <button class="btn btn-light" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        
+        <!-- Stats Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <i class="fas fa-camera fa-2x mb-2" style="color: #667eea;"></i>
+                    <div class="stat-number" id="activeCameras">0</div>
+                    <p>Active Cameras</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <i class="fas fa-car fa-2x mb-2" style="color: #667eea;"></i>
+                    <div class="stat-number" id="totalVehicles">0</div>
+                    <p>Total Vehicles</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <i class="fas fa-chart-line fa-2x mb-2" style="color: #667eea;"></i>
+                    <div class="stat-number" id="detectionRate">0</div>
+                    <p>Detection Rate/min</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2" style="color: #10b981;"></i>
+                    <div class="stat-number" id="accuracy">94</div>
+                    <p>Accuracy %</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Multi-Angle Camera Grid -->
+        <div class="row" id="cameraGrid">
+            <!-- Front View Camera -->
+            <div class="col-md-6 mb-4">
+                <div class="card angle-card" data-angle="front" onclick="selectAngle('front')">
+                    <div class="card-header bg-transparent">
+                        <h5><i class="fas fa-video"></i> Front View Camera</h5>
+                        <span class="badge bg-success live-badge">LIVE</span>
+                    </div>
+                    <div class="camera-feed" id="frontCamera">
+                        <div class="camera-placeholder">
+                            <i class="fas fa-camera fa-4x mb-3"></i>
+                            <p>Front View Camera Feed</p>
+                            <button class="btn btn-sm btn-primary" onclick="configureCamera('front')">
+                                <i class="fas fa-plus"></i> Configure
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6>Detections</h6>
+                        <div id="frontDetections" class="small">No detections yet</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Side View Camera -->
+            <div class="col-md-6 mb-4">
+                <div class="card angle-card" data-angle="side" onclick="selectAngle('side')">
+                    <div class="card-header bg-transparent">
+                        <h5><i class="fas fa-video"></i> Side View Camera</h5>
+                        <span class="badge bg-secondary">INACTIVE</span>
+                    </div>
+                    <div class="camera-feed" id="sideCamera">
+                        <div class="camera-placeholder">
+                            <i class="fas fa-camera fa-4x mb-3"></i>
+                            <p>Side View Camera Feed</p>
+                            <button class="btn btn-sm btn-primary" onclick="configureCamera('side')">
+                                <i class="fas fa-plus"></i> Configure
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6>Detections</h6>
+                        <div id="sideDetections" class="small">No detections yet</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Overhead View Camera -->
+            <div class="col-md-6 mb-4">
+                <div class="card angle-card" data-angle="overhead" onclick="selectAngle('overhead')">
+                    <div class="card-header bg-transparent">
+                        <h5><i class="fas fa-video"></i> Overhead View Camera</h5>
+                        <span class="badge bg-secondary">INACTIVE</span>
+                    </div>
+                    <div class="camera-feed" id="overheadCamera">
+                        <div class="camera-placeholder">
+                            <i class="fas fa-camera fa-4x mb-3"></i>
+                            <p>Overhead View Camera Feed</p>
+                            <button class="btn btn-sm btn-primary" onclick="configureCamera('overhead')">
+                                <i class="fas fa-plus"></i> Configure
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6>Detections</h6>
+                        <div id="overheadDetections" class="small">No detections yet</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rear View Camera -->
+            <div class="col-md-6 mb-4">
+                <div class="card angle-card" data-angle="rear" onclick="selectAngle('rear')">
+                    <div class="card-header bg-transparent">
+                        <h5><i class="fas fa-video"></i> Rear View Camera</h5>
+                        <span class="badge bg-secondary">INACTIVE</span>
+                    </div>
+                    <div class="camera-feed" id="rearCamera">
+                        <div class="camera-placeholder">
+                            <i class="fas fa-camera fa-4x mb-3"></i>
+                            <p>Rear View Camera Feed</p>
+                            <button class="btn btn-sm btn-primary" onclick="configureCamera('rear')">
+                                <i class="fas fa-plus"></i> Configure
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h6>Detections</h6>
+                        <div id="rearDetections" class="small">No detections yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comparison Section -->
+        <div class="card p-3">
+            <h5><i class="fas fa-chart-bar"></i> Angle-wise Detection Comparison</h5>
+            <canvas id="comparisonChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Configure Camera Modal -->
+    <div class="modal fade" id="configModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Configure Camera Angle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label>Camera Angle</label>
+                    <select id="cameraAngle" class="form-control mb-3">
+                        <option value="front">Front View</option>
+                        <option value="side">Side View</option>
+                        <option value="overhead">Overhead View</option>
+                        <option value="rear">Rear View</option>
+                    </select>
+                    <label>RTSP/HTTP URL</label>
+                    <input type="text" id="cameraUrl" class="form-control mb-3" placeholder="rtsp://username:password@ip:port/stream">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Enter the camera stream URL for this angle
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="addCameraAngle()">Add Camera</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let comparisonChart = null;
+        let selectedAngle = null;
+        
+        function selectAngle(angle) {
+            selectedAngle = angle;
+            document.querySelectorAll('.angle-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`.angle-card[data-angle="${angle}"]`).classList.add('active');
+        }
+        
+        function showConfigModal() {
+            new bootstrap.Modal(document.getElementById('configModal')).show();
+        }
+        
+        async function addCameraAngle() {
+            const angle = document.getElementById('cameraAngle').value;
+            const url = document.getElementById('cameraUrl').value;
+            
+            if (!url) {
+                alert('Please enter camera URL');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`http://localhost:8000/api/cameras/multi-angle/add?angle=${angle}&url=${encodeURIComponent(url)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ ${angle} camera added successfully!`);
+                    bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+                    location.reload();
+                } else {
+                    alert('Failed to add camera');
+                }
+            } catch (error) {
+                alert('Error adding camera: ' + error.message);
+            }
+        }
+        
+        async function configureCamera(angle) {
+            document.getElementById('cameraAngle').value = angle;
+            new bootstrap.Modal(document.getElementById('configModal')).show();
+        }
+        
+        async function fetchMultiAngleData() {
+            try {
+                const response = await fetch('http://localhost:8000/api/detections/multi-angle');
+                if (response.ok) {
+                    const data = await response.json();
+                    let totalVehicles = 0;
+                    let activeCount = 0;
+                    const detectionCounts = {};
+                    
+                    for (const [angle, info] of Object.entries(data)) {
+                        if (info.detections && info.detections.length > 0) {
+                            activeCount++;
+                            const count = info.detections.length;
+                            detectionCounts[angle] = count;
+                            totalVehicles += count;
+                            
+                            const detectionsDiv = document.getElementById(`${angle}Detections`);
+                            if (detectionsDiv) {
+                                detectionsDiv.innerHTML = info.detections.slice(-3).map(d => 
+                                    `<div class="small">🚗 ${d.type || 'Vehicle'} detected</div>`
+                                ).join('');
+                            }
+                        }
+                    }
+                    
+                    document.getElementById('activeCameras').innerText = activeCount;
+                    document.getElementById('totalVehicles').innerText = totalVehicles;
+                    document.getElementById('detectionRate').innerText = Math.floor(totalVehicles / 5);
+                    
+                    updateComparisonChart(detectionCounts);
+                }
+            } catch (error) {
+                console.log('Backend not ready');
+            }
+        }
+        
+        function updateComparisonChart(data) {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+            const angles = ['front', 'side', 'overhead', 'rear'];
+            const labels = ['Front View', 'Side View', 'Overhead', 'Rear View'];
+            const counts = angles.map(angle => data[angle] || 0);
+            
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Vehicles Detected',
+                        data: counts,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        borderRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Detection Count by Camera Angle' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Number of Vehicles' } }
+                    }
+                }
+            });
+        }
+        
+        // Initialize
+        fetchMultiAngleData();
+        setInterval(fetchMultiAngleData, 5000);
+        
+        // Add CSS for active state
+        const style = document.createElement('style');
+        style.textContent = `
+            .angle-card.active {
+                border: 3px solid #667eea;
+                box-shadow: 0 8px 25px rgba(102,126,234,0.3);
+            }
+            .nav-link {
+                cursor: pointer;
+                padding: 10px 15px;
+                border-radius: 10px;
+                transition: all 0.3s;
+            }
+            .nav-link:hover, .nav-link.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white !important;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
