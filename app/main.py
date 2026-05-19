@@ -28,7 +28,7 @@ app.add_middleware(
 # Load YOLO model
 print("✅ Loading YOLO model...")
 try:
-    model = YOLO('yolov8n.pt')
+    model = YOLO('models/vehicle_detector.pt')  # YOLOv8x - Better accuracy for vehicle detection
     print("✅ Model loaded successfully")
 except Exception as e:
     print(f"⚠️ Error loading model: {e}")
