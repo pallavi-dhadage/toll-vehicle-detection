@@ -11,7 +11,6 @@ import asyncio
 import pandas as pd
 from io import BytesIO
 import os
-import uvicorn
 
 # Initialize FastAPI
 app = FastAPI(title="Toll Plaza Vehicle Detection System")
@@ -19,6 +18,31 @@ app = FastAPI(title="Toll Plaza Vehicle Detection System")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load YOLO model
+print("✅ Loading YOLO model...")
+try:
+    model = YOLO('models/vehicle_detector.pt')  # YOLOv8x - Better accuracy for vehicle detection
+    print("✅ Model loaded successfully")
+except Exception as e:
+    print(f"⚠️ Error loading model: {e}")
+    model = None
+
+# Vehicle classes
+VEHICLE_CLASSES = {
+    2: 'car', 3: 'motorcycle', 5: 'bus', 
+    7: 'truck', 1: 'bicycle'
+}
+
+# Store data
+vehicle_counters = defaultdict(lambda: defaultdict(int))
+active_websockets = set()
+detections_history = []
 
 # Multi-Angle Camera Support
 class MultiAngleCamera:
@@ -49,66 +73,6 @@ class MultiAngleCamera:
         return {k: v for k, v in self.cameras.items() if v["active"]}
 
 multi_angle_manager = MultiAngleCamera()
-
-@app.get("/api/cameras/multi-angle")
-async def get_multi_angle_cameras():
-    """Get all multi-angle camera configurations"""
-    return JSONResponse({
-        "cameras": multi_angle_manager.get_active_cameras(),
-        "total": len(multi_angle_manager.get_active_cameras())
-    })
-
-@app.post("/api/cameras/multi-angle/add")
-async def add_multi_angle_camera(angle: str, url: str):
-    """Add a camera for specific angle"""
-    if multi_angle_manager.add_camera(angle, url):
-        return JSONResponse({"success": True, "message": f"{angle} camera added"})
-    return JSONResponse({"success": False, "message": "Invalid angle"})
-
-@app.delete("/api/cameras/multi-angle/{angle}")
-async def remove_multi_angle_camera(angle: str):
-    """Remove a camera for specific angle"""
-    if multi_angle_manager.remove_camera(angle):
-        return JSONResponse({"success": True, "message": f"{angle} camera removed"})
-    return JSONResponse({"success": False, "message": "Camera not found"})
-
-@app.get("/api/detections/multi-angle")
-async def get_multi_angle_detections():
-    """Get detections from all angles"""
-    all_detections = {}
-    for angle, camera in multi_angle_manager.cameras.items():
-        if camera["active"]:
-            all_detections[angle] = {
-                "angle": camera["angle"],
-                "detections": list(detections_history[-10:]) if detections_history else []
-            }
-    return JSONResponse(all_detections)
-
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Load YOLO model
-print("✅ Loading YOLO model...")
-try:
-    model = YOLO('models/vehicle_detector.pt')  # YOLOv8x - Better accuracy for vehicle detection
-    print("✅ Model loaded successfully")
-except Exception as e:
-    print(f"⚠️ Error loading model: {e}")
-    model = None
-
-# Vehicle classes
-VEHICLE_CLASSES = {
-    2: 'car', 3: 'motorcycle', 5: 'bus', 
-    7: 'truck', 1: 'bicycle'
-}
-
-# Store data
-vehicle_counters = defaultdict(lambda: defaultdict(int))
-active_websockets = set()
-detections_history = []
 
 print("✅ Database initialized")
 print("🎯 Confidence threshold: 50%")
@@ -295,6 +259,40 @@ async def get_insights():
         ]
     })
 
+@app.get("/api/cameras/multi-angle")
+async def get_multi_angle_cameras():
+    """Get all multi-angle camera configurations"""
+    return JSONResponse({
+        "cameras": multi_angle_manager.get_active_cameras(),
+        "total": len(multi_angle_manager.get_active_cameras())
+    })
+
+@app.post("/api/cameras/multi-angle/add")
+async def add_multi_angle_camera(angle: str, url: str):
+    """Add a camera for specific angle"""
+    if multi_angle_manager.add_camera(angle, url):
+        return JSONResponse({"success": True, "message": f"{angle} camera added"})
+    return JSONResponse({"success": False, "message": "Invalid angle"})
+
+@app.delete("/api/cameras/multi-angle/{angle}")
+async def remove_multi_angle_camera(angle: str):
+    """Remove a camera for specific angle"""
+    if multi_angle_manager.remove_camera(angle):
+        return JSONResponse({"success": True, "message": f"{angle} camera removed"})
+    return JSONResponse({"success": False, "message": "Camera not found"})
+
+@app.get("/api/detections/multi-angle")
+async def get_multi_angle_detections():
+    """Get detections from all angles"""
+    all_detections = {}
+    for angle, camera in multi_angle_manager.cameras.items():
+        if camera["active"]:
+            all_detections[angle] = {
+                "angle": camera["angle"],
+                "detections": detections_history[-10:] if detections_history else []
+            }
+    return JSONResponse(all_detections)
+
 async def broadcast_alert(message: str):
     """Broadcast alert to all connected clients"""
     if active_websockets:
@@ -306,6 +304,7 @@ async def broadcast_alert(message: str):
         await asyncio.gather(*[ws.send_text(alert_data) for ws in active_websockets])
 
 if __name__ == "__main__":
+    import uvicorn
     print("\n" + "="*60)
     print("🚗 TOLL PLAZA VEHICLE DETECTION SYSTEM")
     print("="*60)
@@ -313,5 +312,4 @@ if __name__ == "__main__":
     print("📍 API Documentation: http://localhost:8000/docs")
     print("📍 Stats Endpoint: http://localhost:8000/stats/camera1")
     print("="*60 + "\n")
-    # Run without reload=True for WSL compatibility
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
