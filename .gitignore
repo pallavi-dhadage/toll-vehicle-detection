@@ -59,3 +59,20 @@ test_*.jpg
 *.png
 bus.jpg
 dataset/
+node_modules/
+frontend-react/node_modules/
+frontend-react/build/
+
+# React frontend
+frontend-react/node_modules/
+frontend-react/build/
+frontend-react/.env
+frontend-react/package-lock.json
+
+# Backup directories
+frontend-old-backup/
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
